@@ -1,0 +1,133 @@
+[package]
+name = "kine-runtime"
+authors = ["Invisible Hand Labs Lda. <andreribeiro@invisiblehandlab.org>"]
+edition = "2021"
+version = "4.0.0-dev"
+
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+codec = { workspace = true, package = "parity-scale-codec", default-features = false, features = ["derive"] }
+scale-info = { workspace = true, default-features = false, features = ["derive"] }
+
+pallet-aura = { workspace = true, default-features = false }
+pallet-balances = { workspace = true, default-features = false }
+frame-support = { workspace = true, default-features = false }
+pallet-grandpa = { workspace = true, default-features = false }
+pallet-sudo = { workspace = true, default-features = false }
+frame-system = { workspace = true, default-features = false }
+frame-try-runtime = { workspace = true, default-features = false, optional = true  }
+pallet-timestamp = { workspace = true, default-features = false }
+pallet-transaction-payment = { workspace = true, default-features = false }
+frame-executive = { workspace = true, default-features = false }
+sp-api = { workspace = true, default-features = false }
+sp-block-builder = { workspace = true, default-features = false }
+sp-consensus-aura = { workspace = true, default-features = false }
+sp-consensus-grandpa = { workspace = true, default-features = false }
+sp-core = { workspace = true, default-features = false }
+sp-inherents = { workspace = true, default-features = false }
+sp-offchain = { workspace = true, default-features = false }
+sp-runtime = { workspace = true, default-features = false }
+sp-session = { workspace = true, default-features = false }
+sp-std = { workspace = true, default-features = false }
+sp-transaction-pool = { workspace = true, default-features = false }
+sp-version = { workspace = true, default-features = false }
+
+# Used for the node template's RPCs
+frame-system-rpc-runtime-api = { workspace = true, default-features = false }
+pallet-transaction-payment-rpc-runtime-api = { workspace = true, default-features = false }
+
+# Used for runtime benchmarking
+frame-benchmarking = { workspace = true, default-features = false, optional = true  }
+frame-system-benchmarking = { workspace = true, default-features = false, optional = true  }
+
+# Local Dependencies
+#pallet-template = { workspace = true, default-features = false }
+kine-festival = { workspace = true, default-features = false }
+kine-moderation = { workspace = true, default-features = false }
+kine-movie = { workspace = true, default-features = false }
+kine-ranking-list = { workspace = true, default-features = false }
+kine-stat-tracker = { workspace = true, default-features = false }
+kine-tags = { workspace = true, default-features = false }
+
+
+[build-dependencies]
+substrate-wasm-builder = { workspace = true, optional = true}
+
+[features]
+default = ["std"]
+std = [
+	"frame-try-runtime?/std",
+	"frame-system-benchmarking?/std",
+	"frame-benchmarking?/std",
+	"codec/std",
+	"scale-info/std",
+	"frame-executive/std",
+	"frame-support/std",
+	"frame-system-rpc-runtime-api/std",
+	"frame-system/std",
+	"frame-try-runtime/std",
+	"pallet-aura/std",
+	"pallet-balances/std",
+	"pallet-grandpa/std",
+	"pallet-sudo/std",
+	"kine-festival/std",
+	"kine-moderation/std",
+	"kine-movie/std",
+	"kine-ranking-list/std",
+	"kine-stat-tracker/std",
+	"kine-tags/std",
+	"pallet-timestamp/std",
+	"pallet-transaction-payment-rpc-runtime-api/std",
+	"pallet-transaction-payment/std",
+	"sp-api/std",
+	"sp-block-builder/std",
+	"sp-consensus-aura/std",
+	"sp-consensus-grandpa/std",
+	"sp-core/std",
+	"sp-inherents/std",
+	"sp-offchain/std",
+	"sp-runtime/std",
+	"sp-session/std",
+	"sp-std/std",
+	"sp-transaction-pool/std",
+	"sp-version/std",
+	"substrate-wasm-builder",
+]
+runtime-benchmarks = [
+	"frame-benchmarking/runtime-benchmarks",
+	"frame-support/runtime-benchmarks",
+	"frame-system-benchmarking/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"pallet-balances/runtime-benchmarks",
+	"pallet-grandpa/runtime-benchmarks",
+	"pallet-sudo/runtime-benchmarks",
+	"kine-festival/std",
+	"kine-moderation/std",
+	"kine-movie/std",
+	"kine-ranking-list/std",
+	"kine-stat-tracker/std",
+	"kine-tags/std",
+	"pallet-timestamp/runtime-benchmarks",
+	"sp-runtime/runtime-benchmarks",
+]
+try-runtime = [
+	"frame-try-runtime/try-runtime",
+	"frame-executive/try-runtime",
+	"frame-system/try-runtime",
+	"frame-support/try-runtime",
+	"pallet-aura/try-runtime",
+	"pallet-balances/try-runtime",
+	"pallet-grandpa/try-runtime",
+	"pallet-sudo/try-runtime",
+	"kine-festival/std",
+	"kine-moderation/std",
+	"kine-movie/std",
+	"kine-ranking-list/std",
+	"kine-stat-tracker/std",
+	"kine-tags/std",
+	"pallet-timestamp/try-runtime",
+	"pallet-transaction-payment/try-runtime",
+]
