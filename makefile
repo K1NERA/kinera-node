@@ -10,5 +10,8 @@ run:
 runzero:
 	cargo run --release -- --dev --port=30334 --rpc-port 9944 --rpc-cors=all --rpc-methods=Unsafe --rpc-external
 
+runtarget:
+	./target/release/kine-template --dev --base-path ./my-chain-state/
+
 purge:
 	cargo run -- purge-chain --dev

@@ -1,6 +1,6 @@
 [package]
 name = "kine-tags"
-authors = ["Invisible Hand Labs Lda. <andreribeiro@invisiblehandlab.org>"]
+authors = ["Invisible Hand Labs Lda. <andreribeiro@invisiblehandlab.org>, kinera@invisiblehandlab.org>"]
 edition = "2021"
 version = "4.0.0-dev"
 

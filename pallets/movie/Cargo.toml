@@ -1,13 +1,8 @@
 [package]
 name = "kine-movie"
-version = "4.0.0-dev"
-description = "FRAME pallet template for defining custom runtime logic."
-authors = ["Substrate DevHub <https://github.com/substrate-developer-hub>"]
-homepage = "https://substrate.io"
+authors = ["Invisible Hand Labs Lda. <andreribeiro@invisiblehandlab.org>, kinera@invisiblehandlab.org>"]
 edition = "2021"
-license = "Unlicense"
-publish = false
-repository = "https://github.com/substrate-developer-hub/substrate-node-template/"
+version = "4.0.0-dev"
 
 
 [package.metadata.docs.rs]
@@ -27,8 +22,11 @@ sp-runtime = { workspace = true, default-features = false }
 sp-std = { workspace = true, default-features = false}
 
 # Local Dependencies
-kine-tags = { workspace = true, default-features = false}
+kine-tags = { workspace = true }
 kine-stat-tracker = { workspace = true }
+
+[dev-dependencies]
+pallet-balances = { workspace = true }
 
 
 [features]
@@ -39,6 +37,7 @@ std = [
 	"frame-support/std",
 	"frame-system/std",
 	"scale-info/std",
+	"pallet-balances/std",
 	"kine-tags/std",
 ]
 runtime-benchmarks = ["frame-benchmarking/runtime-benchmarks"]

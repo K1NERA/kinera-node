@@ -50,6 +50,8 @@ pub use sp_runtime::{Perbill, Permill};
 /// Import the template pallet.
 // pub use pallet_template;
 
+pub use kine_festival;
+
 /// An index to a block.
 pub type BlockNumber = u32;
 
@@ -357,7 +359,7 @@ parameter_types! {
 }
 
 impl kine_stat_tracker::Config for Runtime {
-    type RuntimeEvent = RuntimeEvent;
+ 	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type DefaultReputation = DefaultReputation;
 	type NameStringLimit = WalletNameStringLimit;

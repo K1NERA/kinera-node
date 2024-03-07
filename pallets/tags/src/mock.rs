@@ -1,45 +1,40 @@
-use crate as pallet_tags;
+use crate as kine_tags;
 use frame_support::{
 	parameter_types,
 	traits::{ConstU16, ConstU64},
 };
-use frame_system as system;
 use sp_core::H256;
 use sp_runtime::{
-	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
+	BuildStorage,
+	testing::Header,
 };
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
-	pub enum Test where
-		Block = Block,
-		NodeBlock = Block,
-		UncheckedExtrinsic = UncheckedExtrinsic,
+	pub enum Test 
 	{
-		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-		TagsModule: pallet_tags::{Pallet, Call, Storage, Event<T>},
+		System: frame_system,
+		TagsModule: kine_tags,
 	}
 );
 
-impl system::Config for Test {
+impl frame_system::Config for Test {
 	type BaseCallFilter = frame_support::traits::Everything;
 	type BlockWeights = ();
 	type BlockLength = ();
 	type DbWeight = ();
-	type Origin = Origin;
-	type Call = Call;
-	type Index = u64;
-	type BlockNumber = u64;
+	type RuntimeOrigin = RuntimeOrigin;
+	type RuntimeCall = RuntimeCall;
+	type Nonce = u64;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
 	type AccountId = u64;
 	type Lookup = IdentityLookup<Self::AccountId>;
-	type Header = Header;
-	type Event = Event;
+	type Block = Block;
+	type RuntimeEvent = RuntimeEvent;
 	type BlockHashCount = ConstU64<250>;
 	type Version = ();
 	type PalletInfo = PalletInfo;
@@ -61,8 +56,8 @@ parameter_types! {
 	pub const MaxContentWithTag: u32 = 100000;
 }
 
-impl pallet_tags::Config for Test {
-	type Event = Event;
+impl kine_tags::Config for Test {
+	type RuntimeEvent = RuntimeEvent;
 
 	type MaxTags = MaxTags;
 	type MaxContentWithTag = MaxContentWithTag;
@@ -74,5 +69,5 @@ impl pallet_tags::Config for Test {
 
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	system::GenesisConfig::default().build_storage::<Test>().unwrap().into()
+	frame_system::GenesisConfig::<Test>::default().build_storage().unwrap().into()
 }

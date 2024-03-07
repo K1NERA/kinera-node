@@ -1064,7 +1064,7 @@
                                 || fest.external_movies.contains(&movie_id.clone())),
                                 Error::<T>::MovieNotInFestival
                             );
-                            ensure!(fest.owner != who.clone(), Error::<T>::CannotVoteInOwnFestival);
+                            // ensure!(fest.owner != who.clone(), Error::<T>::CannotVoteInOwnFestival);
                             ensure!(fest.status == FestivalStatus::Active, Error::<T>::FestivalNotActive);
                             ensure!(vote_amount <= fest.max_entry, Error::<T>::VoteValueTooHigh);
                             ensure!(vote_amount >  BalanceOf::<T>::from(0u32), Error::<T>::VoteValueCannotBeZero);

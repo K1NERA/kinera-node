@@ -2,6 +2,7 @@
 members = [
 	"node",
 	"pallets/*",
+  "pallets/festival",
 	"runtime",
 ]
 
