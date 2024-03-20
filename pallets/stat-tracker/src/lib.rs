@@ -57,7 +57,7 @@
 					}
 				};
 				use frame_system::pallet_prelude::*;
-	
+				use scale_info::prelude::string::String;
 				use codec::{Decode, Encode, MaxEncodedLen};
 	
 			//* Config *//
@@ -127,11 +127,16 @@
 					pub reputation_moderation: u32,
 					pub locked_tokens_moderation: Balance,
 					pub claimable_tokens_moderation: Balance,
+					
 					pub locked_tokens_festival: Balance,
 					pub claimable_tokens_festival: Balance,
+					pub total_tokens_won_festival: Balance,
+
 					pub locked_tokens_ranking: Balance,
 					pub claimable_tokens_ranking: Balance,
 					pub imbalance_tokens_ranking: TokenImbalance,
+					pub total_tokens_won_ranking: Balance,
+					
 					pub locked_tokens_movie: Balance,
 					pub claimable_tokens_movie: Balance,
 				}
@@ -180,13 +185,13 @@
 			#[pallet::generate_deposit(pub(super) fn deposit_event)]
 			pub enum Event<T: Config> {
 				AccountRegisteredAddress(T::AccountId),
-				AccountRegisteredName(BoundedVec<u8, T::NameStringLimit>),
+				AccountRegisteredName(String),
 	
 				AccountUnregisteredAddress(T::AccountId),
-				AccountUnregisteredName(BoundedVec<u8, T::NameStringLimit>),
+				AccountUnregisteredName(String),
 	
 				AccountDataUpdatedAddress(T::AccountId),
-				AccountDataUpdatedName(BoundedVec<u8, T::NameStringLimit>),
+				AccountDataUpdatedName(String),
 	
 				TokensClaimed(T::AccountId),
 			}
@@ -237,7 +242,7 @@
 					origin: OriginFor<T>,
 					is_name_public: bool,
 					is_wallet_public: bool,
-					name: BoundedVec<u8, T::NameStringLimit>,
+					name_str: String,
 				) -> DispatchResultWithPostInfo {
 					
 					let who = ensure_signed(origin)?;
@@ -246,6 +251,9 @@
 						Error::<T>::WalletAlreadyRegistered
 					);
 					
+					let name: BoundedVec<u8, T::NameStringLimit>
+                        	= TryInto::try_into(name_str.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?;
+
 					let stats = Stats {
 						is_wallet_public: is_wallet_public,
 						is_name_public: is_name_public,
@@ -254,20 +262,8 @@
 					WalletStats::<T>::insert(who.clone(), stats.clone());
 	
 					if !WalletTokens::<T>::contains_key(who.clone()) {
-						let zero_balance = BalanceOf::<T>::from(0u32);
-						let tokens = Tokens {
-							reputation_moderation: T::DefaultReputation::get(),
-							locked_tokens_moderation: zero_balance.clone(),
-							claimable_tokens_moderation: zero_balance.clone(),
-							locked_tokens_festival: zero_balance.clone(),
-							claimable_tokens_festival: zero_balance.clone(),
-							locked_tokens_ranking: zero_balance.clone(),
-							claimable_tokens_ranking: zero_balance.clone(),
-							imbalance_tokens_ranking: (zero_balance.clone(), zero_balance.clone()),
-							locked_tokens_movie: zero_balance.clone(),
-							claimable_tokens_movie: zero_balance,
-						};
-						WalletTokens::<T>::insert(who.clone(), tokens.clone());
+						let mut wallet_tokens = Self::do_create_new_wallet_tokens_zero_balance().unwrap();
+						WalletTokens::<T>::insert(who.clone(), wallet_tokens.clone());
 					};
 	
 					// check if events should be emitted, depending on the privacy settings
@@ -275,7 +271,8 @@
 						Self::deposit_event(Event::AccountRegisteredAddress(who));   
 					}
 					else if is_name_public {
-						Self::deposit_event(Event::AccountRegisteredName(name));   
+						let name_str = String::from_utf8(name.to_vec()).unwrap();
+						Self::deposit_event(Event::AccountRegisteredName(name_str));   
 					};   
 	
 					Ok(().into())
@@ -289,11 +286,14 @@
 				#[pallet::weight(Weight::from_parts(10_000, 0) + T::DbWeight::get().reads_writes(1,1))]
 				pub fn unregister_wallet(
 					origin: OriginFor<T>,
-					name: BoundedVec<u8, T::NameStringLimit>,
+					name_str: String,
 				) -> DispatchResultWithPostInfo {
 					
 					let who = ensure_signed(origin)?;
 	
+					let name: BoundedVec<u8, T::NameStringLimit>
+						= TryInto::try_into(name_str.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?;
+
 					let stats = WalletStats::<T>::try_get(who.clone()).unwrap();
 	
 					WalletStats::<T>::remove(who.clone());
@@ -303,7 +303,7 @@
 						Self::deposit_event(Event::AccountUnregisteredAddress(who));   
 					}
 					else if stats.is_name_public {
-						Self::deposit_event(Event::AccountUnregisteredName(name));   
+						Self::deposit_event(Event::AccountUnregisteredName(name_str));   
 					}
 	
 					Ok(().into())
@@ -320,7 +320,7 @@
 					origin: OriginFor<T>,
 					is_name_public: bool,
 					is_wallet_public: bool,
-					name: BoundedVec<u8, T::NameStringLimit>,
+					name_str: String,
 				) -> DispatchResultWithPostInfo {
 					
 					let who = ensure_signed(origin)?;
@@ -331,7 +331,10 @@
 	
 					WalletStats::<T>::try_mutate(who.clone(), |wallet_stats| -> DispatchResult {
 						let stats = wallet_stats.as_mut().ok_or(Error::<T>::WalletStatsNotFound)?;
-	
+						
+						let name: BoundedVec<u8, T::NameStringLimit>
+                        	= TryInto::try_into(name_str.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?;
+
 						// update the wallet's data
 						stats.is_name_public = is_name_public;
 						stats.is_wallet_public = is_wallet_public;
@@ -345,7 +348,7 @@
 						Self::deposit_event(Event::AccountDataUpdatedAddress(who));   
 					}
 					else if is_name_public {
-						Self::deposit_event(Event::AccountDataUpdatedName(name));   
+						Self::deposit_event(Event::AccountDataUpdatedName(name_str));   
 					}
 	
 					Ok(().into())
@@ -358,6 +361,7 @@
 				#[pallet::weight(Weight::from_parts(10_000, 0) + T::DbWeight::get().reads_writes(1,1))]
 				pub fn claim_all_tokens(
 					origin: OriginFor<T>,
+					testing: String,
 				) -> DispatchResultWithPostInfo {
 					
 					let who = ensure_signed(origin)?;
@@ -460,22 +464,7 @@
 					token_change: BalanceOf<T>,
 				) -> DispatchResultWithPostInfo  {
 	
-					let zero_balance = BalanceOf::<T>::from(0u32);
-					let mut wallet_tokens = Tokens {
-						reputation_moderation: T::DefaultReputation::get(),
-						locked_tokens_moderation: zero_balance.clone(),
-						claimable_tokens_moderation: zero_balance.clone(),
-						
-						locked_tokens_festival: zero_balance.clone(),
-						claimable_tokens_festival: zero_balance.clone(),
-						
-						locked_tokens_ranking: zero_balance.clone(),
-						claimable_tokens_ranking: zero_balance.clone(),
-						imbalance_tokens_ranking: (zero_balance.clone(), zero_balance.clone()),
-						
-						locked_tokens_movie: zero_balance.clone(),
-						claimable_tokens_movie: zero_balance,
-					};
+					let mut wallet_tokens = Self::do_create_new_wallet_tokens_zero_balance().unwrap();
 	
 					match (feature_type, token_type) {
 						(FeatureType::Festival, TokenType::Locked) => wallet_tokens.locked_tokens_festival = token_change.clone(),
@@ -523,22 +512,38 @@
 									token_change,
 									is_slash,
 								)?,
-							(FeatureType::Festival, TokenType::Claimable) => wallet_tokens.claimable_tokens_festival = 
+							(FeatureType::Festival, TokenType::Claimable) => {
+								wallet_tokens.claimable_tokens_festival = 
 								Self::do_calculate_token_change(
 									wallet_tokens.claimable_tokens_festival.clone(),
 									token_change, is_slash,
-								)?,
+								)?;
+								wallet_tokens.total_tokens_won_festival = 
+								Self::do_calculate_token_change(
+									wallet_tokens.total_tokens_won_festival.clone(),
+									token_change,
+									is_slash,
+								)?;
+							},
 		
 							(FeatureType::RankingList, TokenType::Locked) => wallet_tokens.locked_tokens_ranking = 
 								Self::do_calculate_token_change(
 									wallet_tokens.locked_tokens_ranking.clone(),
 									token_change, is_slash,
 								)?, 
-							(FeatureType::RankingList, TokenType::Claimable) => wallet_tokens.claimable_tokens_ranking = 
+							(FeatureType::RankingList, TokenType::Claimable) => {
+								wallet_tokens.claimable_tokens_ranking = 
 								Self::do_calculate_token_change(
 									wallet_tokens.claimable_tokens_ranking.clone(),
 									token_change, is_slash,
-								)?,
+								)?;
+								wallet_tokens.total_tokens_won_ranking = 
+								Self::do_calculate_token_change(
+									wallet_tokens.total_tokens_won_ranking.clone(),
+									token_change,
+									is_slash,
+								)?;
+							},
 							
 							(FeatureType::Moderation, TokenType::Locked) => wallet_tokens.locked_tokens_moderation = 
 								Self::do_calculate_token_change(
@@ -618,22 +623,7 @@
 					is_slash: bool,
 				) -> DispatchResultWithPostInfo  {
 	
-					let zero_balance = BalanceOf::<T>::from(0u32);
-					let mut wallet_tokens = Tokens {
-						reputation_moderation: T::DefaultReputation::get(),
-						locked_tokens_moderation: zero_balance.clone(),
-						claimable_tokens_moderation: zero_balance.clone(),
-						
-						locked_tokens_festival: zero_balance.clone(),
-						claimable_tokens_festival: zero_balance.clone(),
-						
-						locked_tokens_ranking: zero_balance.clone(),
-						claimable_tokens_ranking: zero_balance.clone(),
-						imbalance_tokens_ranking: (zero_balance.clone(), zero_balance.clone()),
-						
-						locked_tokens_movie: zero_balance.clone(),
-						claimable_tokens_movie: zero_balance,
-					};
+					let mut wallet_tokens = Self::do_create_new_wallet_tokens_zero_balance().unwrap();
 	
 					match feature_type {
 						FeatureType::RankingList => {
@@ -704,6 +694,11 @@
 											wallet_tokens.claimable_tokens_festival,
 											new_balance, is_slash,
 										)?;
+									wallet_tokens.total_tokens_won_festival = 
+										Self::do_calculate_token_change(
+											wallet_tokens.total_tokens_won_festival,
+											new_balance, is_slash,
+										)?;
 								}
 							},
 	
@@ -725,7 +720,7 @@
 				// Calculates a new value for a Balance.
 				// If this is a slash, the value is subtracted to a minimum of 0.
 				// If not, the value is added to the total.
-				// The updated values are then returned.
+				// The return is composed of (updated_value, value_change)
 				pub fn do_calculate_token_change(
 					mut current_tokens: BalanceOf<T>,
 					token_change: BalanceOf<T>,
@@ -874,5 +869,35 @@
 	
 	
 	
+
+                fn do_create_new_wallet_tokens_zero_balance(
+                ) -> Result<Tokens<BalanceOf<T>,(BalanceOf<T>, BalanceOf<T>)>, DispatchError> {
+					
+					let zero_balance = BalanceOf::<T>::from(0u32);
+
+					let mut wallet_tokens = Tokens {
+						reputation_moderation: T::DefaultReputation::get(),
+						locked_tokens_moderation: zero_balance.clone(),
+						claimable_tokens_moderation: zero_balance.clone(),
+						
+						locked_tokens_festival: zero_balance.clone(),
+						claimable_tokens_festival: zero_balance.clone(),
+						total_tokens_won_festival: zero_balance.clone(),
+						
+						locked_tokens_ranking: zero_balance.clone(),
+						claimable_tokens_ranking: zero_balance.clone(),
+						imbalance_tokens_ranking: (zero_balance.clone(), zero_balance.clone()),
+						total_tokens_won_ranking: zero_balance.clone(),
+						
+						locked_tokens_movie: zero_balance.clone(),
+						claimable_tokens_movie: zero_balance,
+					};
+
+                    Ok(wallet_tokens)
+                }
+
+
+
+				
 			}
 	}

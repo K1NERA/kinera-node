@@ -13,3 +13,38 @@ fn correct_error_for_none_value() {
 		
 	});
 }
+
+
+
+// create_ranking_list
+
+
+// add_internal_movie_to_ranking_list
+
+
+// add_external_movie_to_ranking_list
+
+
+// vote_for
+
+
+// claim_ranking_rewards
+
+
+
+
+
+// create_list_deadline
+
+
+// do_resolve_festivals_deadline
+
+
+// resolve_ranking_list
+
+
+// do_calculate_voting_power
+
+
+// do_resolve_festivals_deadline
+

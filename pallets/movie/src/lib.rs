@@ -40,8 +40,13 @@
                 use frame_system::pallet_prelude::*;
                 use codec::{Decode, Encode, MaxEncodedLen};
                 use sp_runtime::{RuntimeDebug, traits::{AtLeast32BitUnsigned, CheckedAdd, One}};
-                use scale_info::{TypeInfo};
-                use scale_info::prelude::vec::Vec;
+                use scale_info::{
+                    TypeInfo,
+                    prelude::{
+                        vec::Vec,
+                        string::String,
+                    },
+                };
                 use core::convert::TryInto;
     
                 use kine_tags::{
@@ -167,8 +172,8 @@
             #[pallet::event]
             #[pallet::generate_deposit(pub(super) fn deposit_event)]
             pub enum Event<T: Config> {
-                InternalMovieCreated(BoundedVec<u8, T::LinkStringLimit>, T::AccountId),
-                ExternalMovieCreated(BoundedVec<u8, T::LinkStringLimit>, T::AccountId),
+                InternalMovieCreated(String, T::AccountId),
+                ExternalMovieCreated(String, T::AccountId),
             }
        
     
@@ -200,21 +205,21 @@
                 #[pallet::call_index(0)]#[pallet::weight(Weight::from_parts(10_000, 0) + T::DbWeight::get().reads_writes(1,1))]
                 pub fn create_internal_movie(
                     origin: OriginFor<T>,
-                    name:Vec<u8>,
-                    synopsis:Vec<u8>,
-                    movie_description:Vec<u8>,
+                    name: String,
+                    synopsis: String,
+                    movie_description: String,
                     classification:u32,
-                    release:Vec<u8>,
-                    director:Vec<u8>,
-                    lang:Vec<u8>,
-                    country:Vec<u8>,
+                    release: String,
+                    director: String,
+                    lang: String,
+                    country: String,
                     rating:u32,
-                    aspect_ratio:Vec<u8>,
-                    trailer:Vec<u8>,
-                    imdb:Vec<u8>,
-                    social:Vec<u8>,
-                    ipfs:Vec<u8>,
-                    link:Vec<u8>,
+                    aspect_ratio: String,
+                    trailer: String,
+                    imdb: String,
+                    social: String,
+                    ipfs: String,
+                    link: String,
                     category_tag_list: BoundedVec<(CategoryId<T>, TagId<T>), T::MaxTags>,
                 ) -> DispatchResultWithPostInfo {
                     let who = ensure_signed(origin)?;
@@ -248,7 +253,7 @@
                 pub fn create_external_movie(
                     origin: OriginFor<T>,
                     source: ExternalSource,
-                    link:BoundedVec<u8, T::LinkStringLimit>,
+                    link: String,
                     category_tag_list: BoundedVec<(CategoryId<T>, TagId<T>), T::MaxTags>,
                 ) -> DispatchResultWithPostInfo {
                     
@@ -283,21 +288,21 @@
     
                 pub fn do_create_internal_movie(
                     who: &T::AccountId,
-                    name:Vec<u8>,
-                    synopsis:Vec<u8>,
-                    movie_description:Vec<u8>,
+                    name: String,
+                    synopsis: String,
+                    movie_description: String,
                     classification:u32,
-                    release:Vec<u8>,
-                    director:Vec<u8>,
-                    lang:Vec<u8>,
-                    country:Vec<u8>,
+                    release: String,
+                    director: String,
+                    lang: String,
+                    country: String,
                     rating:u32,
-                    aspect_ratio:Vec<u8>,
-                    trailer:Vec<u8>,
-                    imdb:Vec<u8>,
-                    social:Vec<u8>,
-                    ipfs:Vec<u8>,
-                    link:Vec<u8>,
+                    aspect_ratio: String,
+                    trailer: String,
+                    imdb: String,
+                    social: String,
+                    ipfs: String,
+                    link: String,
                     category_tag_list: BoundedVec<(CategoryId<T>, TagId<T>), T::MaxTags>,
                 ) -> Result<T::InternalMovieId, DispatchError> {
      
@@ -319,42 +324,44 @@
                         category_tag_list.clone()
                     )?;
                     
-                    let bounded_name: BoundedVec<u8, T::StringLimit> = TryInto::try_into(name).map_err(|_| Error::<T>::BadMetadata)?;
+                    let bounded_name: BoundedVec<u8, T::StringLimit> = 
+                        TryInto::try_into(name.as_bytes().to_vec()).map_err(|_| Error::<T>::BadMetadata)?;
                     
                     let bounded_synopsis: BoundedVec<u8, T::StringLimit> =
-                        TryInto::try_into(synopsis).map_err(|_|Error::<T>::BadMetadata)?;
+                        TryInto::try_into(synopsis.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?;
                     
                     let bounded_movie_description: BoundedVec<u8, T::StringLimit> =
-                        TryInto::try_into(movie_description).map_err(|_| Error::<T>::BadMetadata)?;
+                        TryInto::try_into(movie_description.as_bytes().to_vec()).map_err(|_| Error::<T>::BadMetadata)?;
                     
                     let bounded_release: BoundedVec<u8, T::StringLimit> =
-                        TryInto::try_into(release).map_err(|_| Error::<T>::BadMetadata)?;
+                        TryInto::try_into(release.as_bytes().to_vec()).map_err(|_| Error::<T>::BadMetadata)?;
     
                     let bounded_director: BoundedVec<u8, T::StringLimit> =
-                        TryInto::try_into(director).map_err(|_| Error::<T>::BadMetadata)?;
+                        TryInto::try_into(director.as_bytes().to_vec()).map_err(|_| Error::<T>::BadMetadata)?;
                     
                     let bounded_lang: BoundedVec<u8, T::StringLimit> =
-                        TryInto::try_into(lang).map_err(|_| Error::<T>::BadMetadata)?;
+                        TryInto::try_into(lang.as_bytes().to_vec()).map_err(|_| Error::<T>::BadMetadata)?;
     
                     let bounded_country: BoundedVec<u8, T::StringLimit> =
-                        TryInto::try_into(country).map_err(|_| Error::<T>::BadMetadata)?;
+                        TryInto::try_into(country.as_bytes().to_vec()).map_err(|_| Error::<T>::BadMetadata)?;
+                    
                     let bounded_aspect_ratio: BoundedVec<u8, T::StringLimit> =
-                        TryInto::try_into(aspect_ratio).map_err(|_| Error::<T>::BadMetadata)?;
+                        TryInto::try_into(aspect_ratio.as_bytes().to_vec()).map_err(|_| Error::<T>::BadMetadata)?;
     
                     let bounded_trailer: BoundedVec<u8, T::StringLimit> =
-                        TryInto::try_into(trailer).map_err(|_|Error::<T>::BadMetadata)?;
+                        TryInto::try_into(trailer.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?;
                     
                     let bounded_imdb: BoundedVec<u8, T::StringLimit> =
-                        TryInto::try_into(imdb).map_err(|_|Error::<T>::BadMetadata)?;
+                        TryInto::try_into(imdb.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?;
     
                     let bounded_social: BoundedVec<u8, T::StringLimit> =
-                        TryInto::try_into(social).map_err(|_|Error::<T>::BadMetadata)?;
+                        TryInto::try_into(social.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?;
     
                     let bounded_link: BoundedVec<u8, T::StringLimit> =
-                        TryInto::try_into(link).map_err(|_|Error::<T>::BadMetadata)?;
+                        TryInto::try_into(link.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?;
     
                     let bounded_ipfs: BoundedVec<u8, T::LinkStringLimit> =
-                    TryInto::try_into(ipfs).map_err(|_|Error::<T>::BadMetadata)?;
+                    TryInto::try_into(ipfs.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?;
                     
                     let movie = Movie {
                         uploader:who.clone(),
@@ -392,8 +399,8 @@
                         category_tag_list,
                         bounded_content_id,
                     )?;
-            
-                    Self::deposit_event(Event::InternalMovieCreated(bounded_movie_id, who.clone()));
+
+                    Self::deposit_event(Event::InternalMovieCreated(name, who.clone()));
                     Ok(movie_id.clone())
                 } 
             
@@ -401,10 +408,12 @@
                 pub fn do_create_external_movie(
                     who: &T::AccountId,
                     source: ExternalSource,
-                    link: BoundedVec<u8, T::LinkStringLimit>,
+                    link_str: String,
                     category_tag_list: BoundedVec<(CategoryId<T>, TagId<T>), T::MaxTags>,
                 ) -> Result<BoundedVec<u8, T::LinkStringLimit>, DispatchError> {
             
+                    let link: BoundedVec<u8, T::LinkStringLimit> =
+                        TryInto::try_into(link_str.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?;
                     Self::do_ensure_external_movie_doesnt_exist(link.clone()).unwrap();
     
                     let category_type: kine_tags::CategoryType<T>
@@ -423,7 +432,7 @@
                 
                     ExternalMovies::<T>::insert(link.clone(), movie.clone());
             
-                    Self::deposit_event(Event::ExternalMovieCreated(link.clone(), who.clone()));
+                    Self::deposit_event(Event::ExternalMovieCreated(link_str, who.clone()));
                     Ok(link)
                 } 
             

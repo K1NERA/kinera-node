@@ -11,6 +11,7 @@
     //TODO-7 bugged and emits an error
     //TODO-8 check if creator is still registered when activating a festival
     //TODO-9 handle error conditions
+    //TODO-10 Update WalletData to Map
     
 
 
@@ -52,10 +53,15 @@
                 use frame_system::pallet_prelude::*;
                 use codec::{Decode, Encode, MaxEncodedLen};
                 use sp_runtime::{RuntimeDebug, traits::{AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub, CheckedDiv, Saturating, One}};
-                use scale_info::prelude::vec::Vec;
+                use scale_info::{
+                    TypeInfo,
+                    prelude::{
+                        vec::Vec,
+                        string::String,
+                    },
+                };
                 use core::convert::TryInto;
                 use frame_support::BoundedVec;
-                use scale_info::TypeInfo;
                 use sp_std::{collections::btree_map::BTreeMap,vec};
                 use kine_movie;
                 use kine_tags;
@@ -150,12 +156,16 @@
     
                 #[derive(Clone, Encode, Copy, Decode, Eq, PartialEq, RuntimeDebug, MaxEncodedLen, TypeInfo)]
                 pub struct WalletData<BoundedFestivals> {
-                    pub all_festivals: BoundedFestivals,
+                    pub all_owned_festivals: BoundedFestivals,
                     pub awaiting_activation_festivals: BoundedFestivals,
                     pub awaiting_start_festivals: BoundedFestivals,
                     pub active_festivals: BoundedFestivals,
                     pub finished_festivals: BoundedFestivals,
                     pub won_festivals: BoundedFestivals,
+
+                    pub active_voted_festivals: BoundedFestivals,
+                    pub finished_voted_festivals: BoundedFestivals, // only festivals that were not won
+                    pub finished_won_festivals: BoundedFestivals, // only festivals that were not won
                 }
     
     
@@ -231,9 +241,9 @@
             #[pallet::generate_deposit(pub(super) fn deposit_event)]
             pub enum Event<T: Config> {
                 FestivalCreated(T::AccountId, T::FestivalId),
-                MovieAddedToFestival(T::FestivalId, BoundedVec<u8, T::LinkStringLimit>, T::AccountId),
+                MovieAddedToFestival(T::FestivalId, String, T::AccountId),
                 MoviesAddedToFestival(T::FestivalId, T::AccountId),
-                VotedForMovieInFestival(T::FestivalId, BoundedVec<u8, T::LinkStringLimit>, T::AccountId),
+                VotedForMovieInFestival(T::FestivalId, String, T::AccountId),
                 FestivalHasBegun(T::FestivalId),
                 // FestivalHasEnded(T::FestivalId), //TODO-6
                 FestivalHasEnded(T::FestivalId, BoundedVec<T::AccountId, T::MaxVotes>), 
@@ -377,11 +387,11 @@
                 #[pallet::call_index(0)]#[pallet::weight(Weight::from_parts(10_000, 0) + T::DbWeight::get().reads_writes(1,1))]
                 pub fn create_festival(
                     origin: OriginFor<T>,
-                    bounded_name: BoundedVec<u8, T::NameStringLimit>,
-                    bounded_description: BoundedVec<u8, T::NameStringLimit>, 
+                    bounded_name: String,
+                    bounded_description: String, 
                     max_entry: BalanceOf<T>,
-                    internal_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>,
-                    external_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>,
+                    internal_movie_ids: BoundedVec<String, T::MaxMoviesInFest>,
+                    external_movie_ids: BoundedVec<String, T::MaxMoviesInFest>,
                     category_tag_list: BoundedVec<(CategoryId<T>, TagId<T>), T::MaxTags>,
                 ) -> DispatchResultWithPostInfo {
                     
@@ -499,7 +509,6 @@
                             wallet_data.awaiting_activation_festivals.retain(
                                 |fes_id| 
                                 fes_id != &festival_id.clone()
-                                    
                             );
                             wallet_data.awaiting_start_festivals.try_push(festival_id).unwrap();
                             
@@ -593,8 +602,8 @@
                 pub fn add_movies_to_fest(
                     origin: OriginFor<T>,
                     festival_id: T::FestivalId,
-                    mut internal_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>,
-                    mut external_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>,
+                    mut internal_movie_ids: BoundedVec<String, T::MaxMoviesInFest>,
+                    mut external_movie_ids: BoundedVec<String, T::MaxMoviesInFest>,
                 )-> DispatchResultWithPostInfo{
                 
                     let who = ensure_signed(origin)?;
@@ -625,23 +634,39 @@
                             Error::<T>::FestivalNotAcceptingNewMovies
                         );
     
+                        // Validate the names
+                        let mut validated_internal_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>
+                            = TryInto::try_into(Vec::new()).unwrap();;
+                        for internal_movie in internal_movie_ids {
+                            validated_internal_movie_ids.try_push(
+                                TryInto::try_into(internal_movie.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?
+                            );
+                        }
+                        let mut validated_external_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>
+                            = TryInto::try_into(Vec::new()).unwrap();;
+                        for external_movie in external_movie_ids {
+                            validated_external_movie_ids.try_push(
+                                TryInto::try_into(external_movie.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?
+                            );
+                        }
+
                         // filter out movies already in the festival
-                        internal_movie_ids.retain(
+                        validated_internal_movie_ids.retain(
                             |movie_id| 
                             !fes.internal_movies.contains(movie_id)
                         );
-                        external_movie_ids.retain(
+                        validated_external_movie_ids.retain(
                             |movie_id| 
                             !fes.external_movies.contains(movie_id)
                         );
     
                         // add the movies to the festival
-                        for internal_movie in internal_movie_ids {
+                        for internal_movie in validated_internal_movie_ids {
                             fes.internal_movies.try_push(internal_movie);
                         }
     
                         // add the movies to the festival
-                        for external_movie in external_movie_ids {
+                        for external_movie in validated_external_movie_ids {
                             fes.external_movies.try_push(external_movie);
                         }
                         
@@ -660,8 +685,8 @@
                 pub fn remove_movies_from_fest(
                     origin: OriginFor<T>,
                     festival_id: T::FestivalId,
-                    internal_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>,
-                    external_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>,
+                    internal_movie_ids: BoundedVec<String, T::MaxMoviesInFest>,
+                    external_movie_ids: BoundedVec<String, T::MaxMoviesInFest>,
                 )-> DispatchResultWithPostInfo{
                 
                     let who = ensure_signed(origin)?;
@@ -676,17 +701,33 @@
                             fes.status == FestivalStatus::AwaitingActivation,
                             Error::<T>::FestivalNotAcceptingNewMovies
                         );
-    
+
+                        // Validate the names
+                        let mut validated_internal_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>
+                            = TryInto::try_into(Vec::new()).unwrap();
+                        for internal_movie in internal_movie_ids {
+                            validated_internal_movie_ids.try_push(
+                                TryInto::try_into(internal_movie.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?
+                            );
+                        }
+                        let mut validated_external_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>
+                            = TryInto::try_into(Vec::new()).unwrap();
+                        for external_movie in external_movie_ids {
+                            validated_external_movie_ids.try_push(
+                                TryInto::try_into(external_movie.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?
+                            );
+                        }
+
                         //filter only the movies not in internal_movie_ids
                         fes.internal_movies.retain(
                             |movie_id| 
-                            !internal_movie_ids.contains(movie_id)
+                            !validated_internal_movie_ids.contains(movie_id)
                         );
     
                         //filter only the movies not in external_movie_ids
                         fes.external_movies.retain(
                             |movie_id| 
-                            !external_movie_ids.contains(movie_id)
+                            !validated_external_movie_ids.contains(movie_id)
                         );
                         
                         Ok(().into())
@@ -703,7 +744,7 @@
                 pub fn vote_for_movie_in_festival(
                     origin: OriginFor<T>,
                     festival_id: T::FestivalId,
-                    movie_id : BoundedVec<u8, T::LinkStringLimit>,
+                    movie_id: String,
                     vote_amount: BalanceOf<T>,
                 )-> DispatchResultWithPostInfo{
                     
@@ -760,11 +801,11 @@
     
                     pub fn do_create_festival(
                         who: T::AccountId,
-                        name: BoundedVec<u8, T::NameStringLimit>,
-                        description: BoundedVec<u8, T::NameStringLimit>,
+                        name_str: String,
+                        description_str: String,
                         min_ticket_price: BalanceOf<T>,
-                        internal_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>,
-                        external_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>,
+                        internal_movie_ids: BoundedVec<String, T::MaxMoviesInFest>,
+                        external_movie_ids: BoundedVec<String, T::MaxMoviesInFest>,
                         category_tag_list: BoundedVec<(CategoryId<T>, TagId<T>), T::MaxTags>,
                         status: FestivalStatus,
                     ) -> Result<T::FestivalId, DispatchError> {
@@ -779,6 +820,12 @@
                             })
                         ?;
                 
+                        let name: BoundedVec<u8, T::NameStringLimit>
+                            = TryInto::try_into(name_str.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?;
+                
+                        let description: BoundedVec<u8, T::NameStringLimit>
+                            = TryInto::try_into(description_str.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?;
+
                         let bounded_film_list: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>
                             = TryInto::try_into(Vec::new()).map_err(|_|Error::<T>::BadMetadata)?;
                         
@@ -801,14 +848,30 @@
                             categories_and_tags: category_tag_list,
                         };
     
-                        // add the movies to the festival
+                        // Validate the names
+                        let mut validated_internal_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>
+                            = TryInto::try_into(Vec::new()).unwrap();
                         for internal_movie in internal_movie_ids {
-                            festival.internal_movies.try_push(internal_movie);
+                            validated_internal_movie_ids.try_push(
+                                TryInto::try_into(internal_movie.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?
+                            );
+                        }
+                        let mut validated_external_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>
+                            = TryInto::try_into(Vec::new()).unwrap();
+                        for external_movie in external_movie_ids {
+                            validated_external_movie_ids.try_push(
+                                TryInto::try_into(external_movie.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?
+                            );
+                        }
+                        
+                        // add the movies to the festival
+                        for movie_id in validated_internal_movie_ids {
+                            festival.internal_movies.try_push(movie_id);
                         }
     
                         // add the movies to the festival
-                        for external_movie in external_movie_ids {
-                            festival.external_movies.try_push(external_movie);
+                        for movie_id in validated_external_movie_ids {
+                            festival.external_movies.try_push(movie_id);
                         }
     
                         Festivals::<T>::insert(festival_id, festival);
@@ -823,28 +886,15 @@
                     ) -> Result<(), DispatchError> {
     
                         if !WalletFestivalData::<T>::contains_key(who.clone()) {
-    
-                            let mut bounded_festival_list: BoundedVec<T::FestivalId, T::MaxOwnedFestivals>
-                                = TryInto::try_into(Vec::new()).map_err(|_|Error::<T>::BadMetadata)?;
-                            bounded_festival_list.try_push(festival_id).unwrap();
-                            let bounded_empty_festival_list: BoundedVec<T::FestivalId, T::MaxOwnedFestivals>
-                                = TryInto::try_into(Vec::new()).map_err(|_|Error::<T>::BadMetadata)?;
-    
-                            let new_data = WalletData {
-                                all_festivals: bounded_festival_list.clone(),
-                                awaiting_activation_festivals: bounded_festival_list,
-                                awaiting_start_festivals: bounded_empty_festival_list.clone(),
-                                active_festivals: bounded_empty_festival_list.clone(),
-                                finished_festivals: bounded_empty_festival_list.clone(),
-                                won_festivals: bounded_empty_festival_list,
-                            };
+                            let mut new_data = Self::do_create_new_wallet_data().unwrap();
+                            new_data.all_owned_festivals.try_push(festival_id).unwrap();
+                            new_data.awaiting_activation_festivals.try_push(festival_id).unwrap();
                             WalletFestivalData::<T>::insert(who.clone(), new_data);
-    
                         }
                         else {
-                            WalletFestivalData::<T>::try_mutate( who.clone(), |festival_data| -> DispatchResult{
+                            WalletFestivalData::<T>::try_mutate(who.clone(), |festival_data| -> DispatchResult{
                                 let fes_data = festival_data.as_mut().ok_or(Error::<T>::NonexistentFestival)?;
-                                fes_data.all_festivals.try_push(festival_id).unwrap();
+                                fes_data.all_owned_festivals.try_push(festival_id).unwrap();
                                 fes_data.awaiting_activation_festivals.try_push(festival_id).unwrap();
                                 
                                 Ok(())
@@ -1052,13 +1102,16 @@
                     pub fn do_vote_for_movie_in_festival(
                         who: &T::AccountId,
                         festival_id: T::FestivalId,
-                        movie_id : BoundedVec<u8, T::LinkStringLimit>,
+                        movie_id_str: String,
                         vote_amount : BalanceOf<T>,
                     )-> Result<(), DispatchError> {
                         
                         Festivals::<T>::try_mutate_exists(festival_id, |festival| -> DispatchResult {
                             let fest = festival.as_mut().ok_or(Error::<T>::NonexistentFestival)?;   
                             
+                            let movie_id: BoundedVec<u8, T::LinkStringLimit>
+                                = TryInto::try_into(movie_id_str.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?;
+
                             ensure!(
                                 (fest.internal_movies.contains(&movie_id.clone())
                                 || fest.external_movies.contains(&movie_id.clone())),
@@ -1088,7 +1141,22 @@
     
                             fest.total_lockup = fest.total_lockup.checked_add(&vote_amount).ok_or(Error::<T>::Overflow)?;
                             fest.vote_list.try_push(vote).unwrap();
-    
+
+                            if !WalletFestivalData::<T>::contains_key(who.clone()) {
+                                let mut new_data = Self::do_create_new_wallet_data().unwrap();
+                                new_data.active_voted_festivals.try_push(festival_id).unwrap();
+                                WalletFestivalData::<T>::insert(who.clone(), new_data);
+                            }
+                            else {
+                                WalletFestivalData::<T>::try_mutate( who.clone(), |festival_data| -> DispatchResult{
+                                    let fes_data = festival_data.as_mut().ok_or(Error::<T>::NonexistentFestival)?;
+                                    fes_data.active_voted_festivals.try_push(festival_id).unwrap();
+                                    
+                                    Ok(())
+                                })?;
+                            }
+
+
                             Ok(())
                         })
                             
@@ -1137,6 +1205,35 @@
                             ).unwrap();
                             // }
                             winner_list.try_push(vote.voter.clone()).unwrap();
+
+                            // assign the win
+                            WalletFestivalData::<T>::try_mutate( vote.voter.clone(), |festival_data| -> DispatchResult {
+                                let fes_data = festival_data.as_mut().ok_or(Error::<T>::NonexistentFestival)?;
+                                
+                                //filter the festival from the active festival list
+                                fes_data.active_voted_festivals.retain(
+                                    |fes_id| 
+                                    fes_id != &festival_id.clone()
+                                );
+
+                                fes_data.finished_won_festivals.try_push(festival_id).unwrap();
+                                Ok(())
+                            })?;
+                        }
+                        else {
+                            // assign the loss
+                            WalletFestivalData::<T>::try_mutate( vote.voter.clone(), |festival_data| -> DispatchResult {
+                                let fes_data = festival_data.as_mut().ok_or(Error::<T>::NonexistentFestival)?;
+                            
+                                //filter the festival from the active festival list
+                                fes_data.active_voted_festivals.retain(
+                                    |fes_id| 
+                                    fes_id != &festival_id.clone()
+                                );
+
+                                fes_data.finished_voted_festivals.try_push(festival_id).unwrap();
+                                Ok(())
+                            })?;
                         }
     
                         // unlock the tokens from the votes
@@ -1146,7 +1243,11 @@
                             kine_stat_tracker::TokenType::Locked,
                             vote.amount, true
                         ).unwrap();
+
+
+
                     }
+                    
     
                     Ok(winner_list)
                 }
@@ -1194,22 +1295,8 @@
     
                         // assign wins to the uploaders of the winning movies
                         if !WalletFestivalData::<T>::contains_key(uploader.clone()) {
-    
-                            let bounded_owned_list : BoundedVec<T::FestivalId, T::MaxOwnedFestivals>
-                                = TryInto::try_into(Vec::new()).map_err(|_|Error::<T>::BadMetadata)?;
-                            
-                            let mut bounded_won_list : BoundedVec<T::FestivalId, T::MaxOwnedFestivals>
-                                = TryInto::try_into(Vec::new()).map_err(|_|Error::<T>::BadMetadata)?;
-                            bounded_won_list.try_push(festival_id).unwrap();
-    
-                            let new_data = WalletData {
-                                all_festivals: bounded_owned_list.clone(),
-                                awaiting_activation_festivals: bounded_owned_list.clone(),
-                                awaiting_start_festivals: bounded_owned_list.clone(),
-                                active_festivals: bounded_owned_list.clone(),
-                                finished_festivals: bounded_owned_list,
-                                won_festivals: bounded_won_list.clone(),
-                            };
+                            let mut new_data = Self::do_create_new_wallet_data().unwrap();
+                            new_data.won_festivals.try_push(festival_id).unwrap();
                             WalletFestivalData::<T>::insert(uploader.clone(), new_data);
     
                         }
@@ -1273,9 +1360,32 @@
                 }
     
     
+                fn do_create_new_wallet_data(
+                ) -> Result<WalletData<BoundedVec<T::FestivalId, T::MaxOwnedFestivals>>, DispatchError> {
+
+                    let bounded_festival_list : BoundedVec<T::FestivalId, T::MaxOwnedFestivals>
+                        = TryInto::try_into(Vec::new()).map_err(|_|Error::<T>::BadMetadata)?;
+
+                    let new_data = WalletData {
+                        all_owned_festivals: bounded_festival_list.clone(),
+                        awaiting_activation_festivals: bounded_festival_list.clone(),
+                        awaiting_start_festivals: bounded_festival_list.clone(),
+                        active_festivals: bounded_festival_list.clone(),
+                        finished_festivals: bounded_festival_list.clone(),
+                        won_festivals: bounded_festival_list.clone(),
+
+                        active_voted_festivals: bounded_festival_list.clone(),
+                        finished_voted_festivals: bounded_festival_list.clone(),
+                        finished_won_festivals: bounded_festival_list,
+                    };
+
+                    Ok(new_data)
+                }
+    
     
     
     
             }
+            
     }
         

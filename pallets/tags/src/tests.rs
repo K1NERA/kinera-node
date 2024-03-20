@@ -18,3 +18,8 @@ fn correct_error_for_none_value() {
 		// assert_noop!(TemplateModule::cause_error(Origin::signed(1)), Error::<Test>::NoneValue);
 	});
 }
+
+
+// do_validate_tag_data
+
+// do_update_tag_data
