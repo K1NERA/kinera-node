@@ -151,7 +151,7 @@ fn testnet_genesis(
 			BoundedVec<u8, TagStringLimit>,
 		), MaxTags>,
 	) = (
-		"All Times, Best Films".as_bytes().to_vec().try_into().unwrap(),
+		"All Time, Best Films".as_bytes().to_vec().try_into().unwrap(),
 		"The best films on the platform.".as_bytes().to_vec().try_into().unwrap(),
 		4800u64.into(),
 		TryInto::try_into(vec![(
@@ -187,7 +187,7 @@ fn testnet_genesis(
 			BoundedVec<u8, TagStringLimit>,
 		), MaxTags>,
 	) = (
-		"Best Asiatic Fiction".as_bytes().to_vec().try_into().unwrap(),
+		"Best Asian Fiction".as_bytes().to_vec().try_into().unwrap(),
 		"The best Asian Fiction movies.".as_bytes().to_vec().try_into().unwrap(),
 		4800u64.into(),
 		TryInto::try_into(vec![(
@@ -205,7 +205,7 @@ fn testnet_genesis(
 			BoundedVec<u8, TagStringLimit>,
 		), MaxTags>,
 	) = (
-		"Best Crypto Youtuber/TikTok Channels, Online".as_bytes().to_vec().try_into().unwrap(),
+		"Best Crypto Youbers".as_bytes().to_vec().try_into().unwrap(),
 		"The best content regarding Web3 and Crypto.".as_bytes().to_vec().try_into().unwrap(),
 		4800u64.into(),
 		TryInto::try_into(vec![(
@@ -223,7 +223,7 @@ fn testnet_genesis(
 			BoundedVec<u8, TagStringLimit>,
 		), MaxTags>,
 	) = (
-		"Documentaries and Fiction, Online".as_bytes().to_vec().try_into().unwrap(),
+		"Best Documentaries Online".as_bytes().to_vec().try_into().unwrap(),
 		"The best films on the platform.".as_bytes().to_vec().try_into().unwrap(),
 		4800u64.into(),
 		TryInto::try_into(vec![(
@@ -231,7 +231,9 @@ fn testnet_genesis(
 			"Just FUN Others".as_bytes().to_vec().try_into().unwrap(),
 		)]).unwrap(),
 	);
-	
+
+
+
 	// initialize the vec with the pre-built tuples
 	let initial_ranking_lists = vec![
 		rl_all_time_best, 
@@ -239,6 +241,7 @@ fn testnet_genesis(
 		rl_best_asian_fiction,
 		rl_best_crypto,
 		rl_documentaries_and_fiction,
+   
 	];
 	
 

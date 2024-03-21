@@ -128,7 +128,7 @@
             //* Structs *//
     
                 #[derive(Clone, Encode, Copy, Decode, Eq, PartialEq, RuntimeDebug, MaxEncodedLen, TypeInfo)]
-                pub struct Festival<FestivalId, AccountId, BoundedNameString, BoundedDescString, FestivalStatus, BalanceOf, VoteMap, CategoryTagList, MoviesInFest> {
+                pub struct Festival<FestivalId, AccountId, BoundedNameString, BoundedDescString, FestivalStatus, BalanceOf, VoteMap, CategoryTagList, MoviesInFest, BlockStartEnd> {
                     pub id: FestivalId,
                     pub owner: AccountId,
                     pub name: BoundedNameString,
@@ -140,6 +140,7 @@
                     pub categories_and_tags: CategoryTagList,
                     pub internal_movies: MoviesInFest,
                     pub external_movies: MoviesInFest,
+                    pub block_start_end: BlockStartEnd,
                 }
     
                 #[derive(Clone, Encode, Copy, Decode, Eq, PartialEq, RuntimeDebug, MaxEncodedLen, TypeInfo)]
@@ -204,6 +205,7 @@
                             >, //VoteList
                             BoundedVec<(CategoryId<T>, TagId<T>), T::MaxTags>, //CategoryTagList
                             BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>, //MoviesInFest
+                            (BlockNumberFor<T>, BlockNumberFor<T>),
                         >,
                         OptionQuery
                     >;
@@ -522,6 +524,7 @@
     
                         //bind the duration to the festival
                         Self::do_bind_duration_to_festival(festival_id, start_block, end_block)?;
+                        festival.block_start_end = (start_block, end_block);
                         festival.status = FestivalStatus::AwaitingStartBlock;
     
                         Self::deposit_event(Event::FestivalActivated(festival_id, who));
@@ -589,6 +592,7 @@
                         })?;
     
                         //bind the duration to the festival
+                        festival.block_start_end = (<frame_system::Pallet<T>>::block_number(), end_block);
                         festival.status = FestivalStatus::Active;
     
                         Self::deposit_event(Event::FestivalActivated(festival_id, who));
@@ -854,6 +858,7 @@
                             total_lockup: zero_lockup,
                             vote_map: bounded_vote_map,
                             categories_and_tags: category_tag_list,
+                            block_start_end: (BlockNumberFor::<T>::from(0u32), BlockNumberFor::<T>::from(0u32)),
                         };
     
                         // Validate the names
