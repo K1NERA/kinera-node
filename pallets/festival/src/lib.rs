@@ -293,6 +293,8 @@
                 VoteValueCannotBeZero,
     
                 InvalidBlockPeriod,
+
+                NoClaimableTokens,
             }
     
     
@@ -776,10 +778,15 @@
                     let mut reward = BalanceOf::<T>::from(0u32);
                     
                     let claimable_tokens_festival = 
-                        kine_stat_tracker::Pallet::<T>::
-                        get_wallet_tokens(who.clone()).unwrap()
+                        kine_stat_tracker::Pallet::<T>
+                        ::get_wallet_tokens(who.clone()).unwrap()
                         .claimable_tokens_festival;
-    
+                    
+                    ensure!(
+                        claimable_tokens_festival > BalanceOf::<T>::from(0u32),
+                        Error::<T>::NoClaimableTokens
+                    );
+
                     <T as kine_stat_tracker::Config>::Currency::transfer(
                         &Self::account_id(),  &who.clone(),
                         claimable_tokens_festival.clone(), AllowDeath, 

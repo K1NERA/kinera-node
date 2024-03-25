@@ -361,7 +361,6 @@
 				#[pallet::weight(Weight::from_parts(10_000, 0) + T::DbWeight::get().reads_writes(1,1))]
 				pub fn claim_all_tokens(
 					origin: OriginFor<T>,
-					testing: String,
 				) -> DispatchResultWithPostInfo {
 					
 					let who = ensure_signed(origin)?;
@@ -384,8 +383,6 @@
 							total_tokens
 							.checked_add(&tokens.claimable_tokens_ranking)
 							.ok_or(Error::<T>::TokenOverflow)?;
-	
-	
 	
 						// ensure the transfer works
 						ensure!(
@@ -627,7 +624,7 @@
 	
 					match feature_type {
 						FeatureType::RankingList => {
-							let (_new_balance, new_imbalance) = 
+							let (new_balance, new_imbalance) = 
 								Self::do_calculate_imbalance_change(
 									BalanceOf::<T>::from(0u32),
 									new_earned,
@@ -639,13 +636,18 @@
 	
 							WalletTokens::<T>::insert(who.clone(), wallet_tokens.clone());
 	
-							// if new_balance > BalanceOf::<T>::from(0u32) {
-							// 	wallet_tokens.claimable_tokens_festival = 
-							// 		Self::do_calculate_token_change(
-							// 			wallet_tokens.claimable_tokens_festival.clone(),
-							// 			token_change, is_slash,
-							// 		)?,
-							// }
+							if new_balance > BalanceOf::<T>::from(0u32) {
+								wallet_tokens.claimable_tokens_ranking = 
+									Self::do_calculate_token_change(
+										wallet_tokens.claimable_tokens_ranking,
+										new_balance, is_slash,
+									)?;
+								wallet_tokens.total_tokens_won_ranking = 
+									Self::do_calculate_token_change(
+										wallet_tokens.total_tokens_won_ranking,
+										new_balance, is_slash,
+									)?;
+							}
 						},
 						
 						_ => ()
@@ -688,15 +690,14 @@
 								wallet_tokens.imbalance_tokens_ranking = new_imbalance;
 	
 								if new_balance > BalanceOf::<T>::from(0u32) {
-									wallet_tokens.claimable_tokens_festival = 
-										// new_balance;
+									wallet_tokens.claimable_tokens_ranking = 
 										Self::do_calculate_token_change(
-											wallet_tokens.claimable_tokens_festival,
+											wallet_tokens.claimable_tokens_ranking,
 											new_balance, is_slash,
 										)?;
-									wallet_tokens.total_tokens_won_festival = 
+									wallet_tokens.total_tokens_won_ranking = 
 										Self::do_calculate_token_change(
-											wallet_tokens.total_tokens_won_festival,
+											wallet_tokens.total_tokens_won_ranking,
 											new_balance, is_slash,
 										)?;
 								}

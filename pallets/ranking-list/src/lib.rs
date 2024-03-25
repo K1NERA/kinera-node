@@ -215,7 +215,7 @@
 						let current_block = <frame_system::Pallet<T>>::block_number();
 						
 						let duration_blocks: BlockNumberFor<T> =
-							TryInto::try_into(0u32).map_err(|_| Error::<T>::BadMetadata).unwrap();
+							TryInto::try_into(T::MinimumListDuration::get()).map_err(|_| Error::<T>::BadMetadata).unwrap();
 						let list_deadline_block = current_block.checked_add(&duration_blocks.clone()).ok_or(Error::<T>::Overflow).unwrap();
 						Pallet::<T>::create_list_deadline(ranking_list_id, list_deadline_block).unwrap();
 					
@@ -262,7 +262,7 @@
 			>;
 	
 			// Matches a RankingListId to that same Ranking List's data.
-			// Contains a list of all the MovieIds in the festival. These IDs can
+			// Contains a list of all the MovieIds in the ranking list. These IDs can
 			// be used to retrieve the voting information in the ListVotes storage.
 			#[pallet::storage]
 			#[pallet::getter(fn ranking_list)]
@@ -305,7 +305,7 @@
 			pub enum Event<T: Config> {
 				RankingListCreated(RankingListId),
 				MovieAddedToList(RankingListId, String, T::AccountId),
-				VotedInFestival(T::AccountId, RankingListId),	
+				VotedInList(T::AccountId, RankingListId),	
 				RankingTokensClaimed(T::AccountId, BalanceOf<T>),	
 				RankingListPayoff(RankingListId),	
 			}
@@ -333,6 +333,7 @@
 				WalletStatsRegistryRequired,
 				NoVoteInList,
 				UnstakeValueTooHigh,
+				NoClaimableTokens,
 			}
 	
 	
@@ -346,7 +347,7 @@
 				// }
 	
 				fn on_finalize(now: BlockNumberFor<T>) {
-					Self::do_resolve_festivals_deadline(now);
+					Self::do_resolve_lists_deadline(now);
 				}
 			}
 	
@@ -500,18 +501,22 @@
 							conviction: conviction.clone(),
 							unlock_block: unlock_block,
 						};
-	
-						// retrieve the votes for the ranking list
-						let mut votes = list.votes_by_user.get_mut(&who.clone());
-		
+						
 						// create a new vote list, with the user's vote in it and add it
-						let mut user_votes: BoundedVec<RankingVote<BoundedVec<u8, T::LinkStringLimit>, BalanceOf<T>, BlockNumberFor<T>>, T::MaxVotersPerList> =
-							TryInto::try_into(Vec::new()).map_err(|_| Error::<T>::BadMetadata)?;
-						
-						user_votes.try_push(vote).unwrap();
-						
-						list.votes_by_user.try_insert(who.clone(), user_votes).unwrap();
+						if !list.votes_by_user.contains_key(&who.clone()) {
+							let mut user_votes: BoundedVec<RankingVote<BoundedVec<u8, T::LinkStringLimit>, BalanceOf<T>, BlockNumberFor<T>>, T::MaxVotersPerList> =
+								TryInto::try_into(Vec::new()).map_err(|_| Error::<T>::BadMetadata)?;
+							user_votes.try_push(vote).unwrap();
+							list.votes_by_user.try_insert(who.clone(), user_votes).unwrap();
+						}
+						// the voter has voted in the list, add a new vote
+						else {
+							let mut votes = list.votes_by_user.get_mut(&who.clone()).unwrap();
+							votes.try_push(vote).unwrap();
+						}
+
 						list.movies_in_list.try_push(movie_id.clone()).unwrap();
+
 						Ok(().into())
 					})?;
 					
@@ -586,17 +591,21 @@
 							conviction: conviction,
 							unlock_block: unlock_block,
 						};
-	
-						// retrieve the votes for the ranking list
-						let mut votes = list.votes_by_user.get_mut(&who.clone());
 		
+
 						// create a new vote list, with the user's vote in it and add it
-						let mut user_votes: BoundedVec<RankingVote<BoundedVec<u8, T::LinkStringLimit>, BalanceOf<T>, BlockNumberFor<T>>, T::MaxVotersPerList> =
-							TryInto::try_into(Vec::new()).map_err(|_| Error::<T>::BadMetadata)?;
-						
-						user_votes.try_push(vote).unwrap();
-						
-						list.votes_by_user.try_insert(who.clone(), user_votes).unwrap();
+						if !list.votes_by_user.contains_key(&who.clone()) {
+							let mut user_votes: BoundedVec<RankingVote<BoundedVec<u8, T::LinkStringLimit>, BalanceOf<T>, BlockNumberFor<T>>, T::MaxVotersPerList> =
+								TryInto::try_into(Vec::new()).map_err(|_| Error::<T>::BadMetadata)?;
+							user_votes.try_push(vote).unwrap();
+							list.votes_by_user.try_insert(who.clone(), user_votes).unwrap();
+						}
+						// the voter has voted in the list, add a new vote
+						else {
+							let mut votes = list.votes_by_user.get_mut(&who.clone()).unwrap();
+							votes.try_push(vote).unwrap();
+						}
+
 						list.movies_in_list.try_push(movie_link.clone()).unwrap();
 					
 						Ok(().into())
@@ -665,11 +674,10 @@
 						};
 	
 						// retrieve the votes for the ranking list
-						let mut votes = list.votes_by_user.get_mut(&who.clone());
 						
-						// if the user hasn't voted in the list yet, create a new user entry with the vote
-						if votes == None {
-							// create a new vote list, with the user's vote in it and add it
+						
+						// create a new vote list, with the user's vote in it and add it
+						if !list.votes_by_user.contains_key(&who.clone()) {
 							let mut user_votes: BoundedVec<RankingVote<BoundedVec<u8, T::LinkStringLimit>, BalanceOf<T>, BlockNumberFor<T>>, T::MaxVotersPerList> =
 								TryInto::try_into(Vec::new()).map_err(|_| Error::<T>::BadMetadata)?;
 							user_votes.try_push(vote).unwrap();
@@ -677,14 +685,14 @@
 						}
 						// the voter has voted in the list, add a new vote
 						else {
-							let unwrapped_votes = votes.unwrap();
-							unwrapped_votes.try_push(vote).unwrap();
+							let mut votes = list.votes_by_user.get_mut(&who.clone()).unwrap();
+							votes.try_push(vote).unwrap();
 						}
 						
 						Ok(().into())
 					})?;
 					
-					Self::deposit_event(Event::VotedInFestival(who, list_id));
+					Self::deposit_event(Event::VotedInList(who, list_id));
 					Ok(().into())
 				}
 	
@@ -767,7 +775,7 @@
 						Ok(().into())
 					})?;
 					
-					Self::deposit_event(Event::VotedInFestival(who, list_id));
+					Self::deposit_event(Event::VotedInList(who, list_id));
 					Ok(().into())
 				}
 	
@@ -782,10 +790,16 @@
 					
 					let who = ensure_signed(origin)?;
 					
-					let mut reward = BalanceOf::<T>::from(0u32);
+					let claimable_tokens_ranking = 
+						kine_stat_tracker::Pallet::<T>
+						::get_wallet_tokens(who.clone()).unwrap()
+						.claimable_tokens_ranking;
 					
-					let claimable_tokens_ranking = kine_stat_tracker::Pallet::<T>::get_wallet_tokens(who.clone()).unwrap().claimable_tokens_ranking;
-	
+					ensure!(
+						claimable_tokens_ranking > BalanceOf::<T>::from(0u32), 
+						Error::<T>::NoClaimableTokens
+					);
+
 					T::Currency::deposit_into_existing(
 						&who.clone(),
 						claimable_tokens_ranking.clone(), 
@@ -798,7 +812,7 @@
 						claimable_tokens_ranking.clone(), true
 					)?;
 				
-					Self::deposit_event(Event::RankingTokensClaimed(who, reward));
+					Self::deposit_event(Event::RankingTokensClaimed(who, claimable_tokens_ranking));
 					Ok(().into())
 				}	
 	
@@ -857,7 +871,7 @@
 					// Concludes the ranking list and determines the winners. This is triggered by hooks.
 					// This takes into account the total voting power (tokens * conviction) of each movie.
 					// Users who vote in the top ranked movies will receive rewards based on their total tokens locked.
-					pub fn do_resolve_festivals_deadline(
+					pub fn do_resolve_lists_deadline(
 						block_deadline: BlockNumberFor<T>
 					) -> DispatchResultWithPostInfo {
 					

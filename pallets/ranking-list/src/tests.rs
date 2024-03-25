@@ -37,7 +37,7 @@ fn correct_error_for_none_value() {
 // create_list_deadline
 
 
-// do_resolve_festivals_deadline
+// do_resolve_lists_deadline
 
 
 // resolve_ranking_list
@@ -46,5 +46,5 @@ fn correct_error_for_none_value() {
 // do_calculate_voting_power
 
 
-// do_resolve_festivals_deadline
+// do_resolve_lists_deadline
 
