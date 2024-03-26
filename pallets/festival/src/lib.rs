@@ -525,7 +525,8 @@
                         })?;
     
                         //bind the duration to the festival
-                        Self::do_bind_duration_to_festival(festival_id, start_block, end_block)?;
+                        Self::do_bind_start_block_to_festival(festival_id, start_block)?;
+                        Self::do_bind_end_block_to_festival(festival_id, end_block)?;
                         festival.block_start_end = (start_block, end_block);
                         festival.status = FestivalStatus::AwaitingStartBlock;
     
@@ -594,9 +595,12 @@
                         })?;
     
                         //bind the duration to the festival
-                        festival.block_start_end = (<frame_system::Pallet<T>>::block_number(), end_block);
+                        Self::do_bind_end_block_to_festival(festival_id, end_block)?;
+                        let start_block = <frame_system::Pallet<T>>::block_number();
+                        festival.block_start_end = (start_block, end_block);
                         festival.status = FestivalStatus::Active;
-    
+
+
                         Self::deposit_event(Event::FestivalActivated(festival_id, who));
                         Ok(().into())
                     })?;
@@ -925,10 +929,9 @@
                     }
     
     
-                    pub fn do_bind_duration_to_festival(
+                    pub fn do_bind_start_block_to_festival(
                         festival_id : T::FestivalId,
-                        start_block : BlockNumberFor<T>,
-                        end_block: BlockNumberFor<T>
+                        start_block: BlockNumberFor<T>
                     ) -> Result<(), DispatchError> {
                         
                         // check if any entries exist for the start block and push the movie if true
@@ -954,8 +957,17 @@
                             };
                             BlockAssignments::<T>::insert(start_block.clone(), assignment);
                         }
-    
+
+                        Ok(())
+                    }
                         
+
+
+                    pub fn do_bind_end_block_to_festival(
+                        festival_id : T::FestivalId,
+                        end_block: BlockNumberFor<T>
+                    ) -> Result<(), DispatchError> {
+
                         // check if any entries exist for the end block and push the movie if true
                         if BlockAssignments::<T>::contains_key(end_block) {
                             BlockAssignments::<T>::mutate_exists(end_block, |assignments| -> DispatchResult {
@@ -1061,7 +1073,7 @@
                         
                         let festivals = fests.unwrap();
                         for festival_id in festivals.to_end.iter() {
-                            Festivals::<T>::try_mutate_exists( festival_id,|festival| -> DispatchResult{
+                            Festivals::<T>::try_mutate_exists( festival_id,|festival| -> DispatchResult {
                                 let fest = festival.as_mut().ok_or(Error::<T>::NonexistentFestival)?;
                                 
                                 if fest.status == FestivalStatus::Active {
