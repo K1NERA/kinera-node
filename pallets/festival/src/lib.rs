@@ -12,6 +12,7 @@
     //TODO-8 check if creator is still registered when activating a festival
     //TODO-9 handle error conditions
     //TODO-10 Update WalletData to Map
+    //TODO-11 Upgrade the ensure to a bool
     
 
 
@@ -128,7 +129,7 @@
             //* Structs *//
     
                 #[derive(Clone, Encode, Copy, Decode, Eq, PartialEq, RuntimeDebug, MaxEncodedLen, TypeInfo)]
-                pub struct Festival<FestivalId, AccountId, BoundedNameString, BoundedDescString, FestivalStatus, BalanceOf, VoteMap, CategoryTagList, MoviesInFest, BlockStartEnd> {
+                pub struct Festival<FestivalId, AccountId, BoundedNameString, BoundedDescString, FestivalStatus, BalanceOf, VoteMap, CategoryTagList, MoviesInFest, BlockStartEnd, BlockNumber> {
                     pub id: FestivalId,
                     pub owner: AccountId,
                     pub name: BoundedNameString,
@@ -141,6 +142,7 @@
                     pub internal_movies: MoviesInFest,
                     pub external_movies: MoviesInFest,
                     pub block_start_end: BlockStartEnd,
+                    pub vote_power_decrease_block: BlockNumber,
                 }
     
                 #[derive(Clone, Encode, Copy, Decode, Eq, PartialEq, RuntimeDebug, MaxEncodedLen, TypeInfo)]
@@ -153,6 +155,7 @@
                 pub struct Vote<AccountId, Balance> {
                     pub voter: AccountId,
                     pub amount: Balance,
+                    pub amount_after_weight: Balance,
                 }
     
                 #[derive(Clone, Encode, Copy, Decode, Eq, PartialEq, RuntimeDebug, MaxEncodedLen, TypeInfo)]
@@ -206,6 +209,7 @@
                             BoundedVec<(CategoryId<T>, TagId<T>), T::MaxTags>, //CategoryTagList
                             BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>, //MoviesInFest
                             (BlockNumberFor<T>, BlockNumberFor<T>),
+                            BlockNumberFor<T>,
                         >,
                         OptionQuery
                     >;
@@ -597,8 +601,23 @@
                         //bind the duration to the festival
                         Self::do_bind_end_block_to_festival(festival_id, end_block)?;
                         let start_block = <frame_system::Pallet<T>>::block_number();
+                        let mut festival_duration = 
+                            end_block
+                            .checked_sub(&start_block)
+                            .ok_or(Error::<T>::Underflow)?;
+                        let vote_decrease_margin =
+                            festival_duration
+                            .checked_div(&BlockNumberFor::<T>::from(10u32))
+                            .ok_or(Error::<T>::Underflow)?;
+                        let power_decrease_block = 
+                            end_block
+                            .checked_sub(&vote_decrease_margin)
+                            .ok_or(Error::<T>::Underflow)?;
+
+                        let mut vote_decrease_block = 
                         festival.block_start_end = (start_block, end_block);
                         festival.status = FestivalStatus::Active;
+                        festival.vote_power_decrease_block = power_decrease_block;
 
 
                         Self::deposit_event(Event::FestivalActivated(festival_id, who));
@@ -870,6 +889,7 @@
                             vote_map: bounded_vote_map,
                             categories_and_tags: category_tag_list,
                             block_start_end: (BlockNumberFor::<T>::from(0u32), BlockNumberFor::<T>::from(0u32)),
+                            vote_power_decrease_block: BlockNumberFor::<T>::from(0u32),
                         };
     
                         // Validate the names
@@ -1154,6 +1174,41 @@
                             ensure!(vote_amount <= fest.max_entry, Error::<T>::VoteValueTooHigh);
                             ensure!(vote_amount >  BalanceOf::<T>::from(0u32), Error::<T>::VoteValueCannotBeZero);
                             
+                            
+                            let mut vote_weight = vote_amount.clone();
+                            let current_block = <frame_system::Pallet<T>>::block_number();
+                            if current_block > fest.vote_power_decrease_block {
+                                let (_, end_block) = fest.block_start_end;
+                                
+                                let vote_moment_aux =
+                                    end_block
+                                    .checked_sub(&current_block)
+                                    .ok_or(Error::<T>::Underflow)?;
+                                ensure!(vote_moment_aux > BlockNumberFor::<T>::from(1u32), Error::<T>::FestivalNotActive);
+                                
+                                let vote_decrease_aux = 
+                                    end_block
+                                    .checked_sub(&fest.vote_power_decrease_block.into())
+                                    .ok_or(Error::<T>::Underflow)?;
+
+                                // let vote_moment_margin: u32 = vote_moment_aux.into();
+
+                                let vote_moment_margin: u32
+                                    = TryInto::try_into(vote_moment_aux).map_err(|_|Error::<T>::BadMetadata)?;
+
+                                let vote_decrease_margin: u32
+                                    = TryInto::try_into(vote_decrease_aux).map_err(|_|Error::<T>::BadMetadata)?;
+
+                                vote_weight =
+                                    vote_weight
+                                    .saturating_mul(BalanceOf::<T>::from(vote_moment_margin));
+
+                                vote_weight =
+                                    vote_weight
+                                    .checked_div(&BalanceOf::<T>::from(vote_decrease_margin))
+                                    .ok_or(Error::<T>::Underflow)?;
+                            }
+
                             <T as kine_stat_tracker::Config>::Currency::transfer(
                                 who, &Self::account_id(),
                                 fest.max_entry, AllowDeath,
@@ -1168,6 +1223,7 @@
                             let vote = Vote {
                                 voter: who.clone(),
                                 amount: vote_amount,
+                                amount_after_weight: vote_weight,
                             };
     
                             fest.total_lockup = fest.total_lockup.checked_add(&vote_amount).ok_or(Error::<T>::Overflow)?;
@@ -1218,18 +1274,30 @@
                 ) -> Result<BoundedVec<T::AccountId, T::MaxVotes>, DispatchError> {
                     
                     let winning_opts = Self::do_get_winning_options(festival_id).unwrap();
-                    let winners_lockup = Self::do_get_winners_total_lockup(festival_id, winning_opts.clone()).unwrap();
+                    let mut winners_lockup = Self::do_get_winners_total_lockup(festival_id, winning_opts.clone()).unwrap();
                     let mut winner_list : BoundedVec<T::AccountId, T::MaxVotes>
                         = TryInto::try_into(Vec::new()).map_err(|_|Error::<T>::BadMetadata)?;
                     
                     let festival = Festivals::<T>::try_get(festival_id).unwrap();
-                    // let total_lockup = festival.total_lockup;
-    
-                    // let mut reward_exists = true;
-                    // if total_lockup == BalanceOf::<T>::from(0u32) {
-                    //     reward_exists = false;
-                    // }
                     
+                    // Assignt he creator's rewards
+                    let creator_share = 
+                        festival.total_lockup.clone()
+                        .checked_div(&50u32.into()) // 2%
+                        .ok_or(Error::<T>::Underflow)?;
+
+                    winners_lockup =
+                        winners_lockup.clone()
+                        .checked_sub(&creator_share)
+                        .ok_or(Error::<T>::Underflow)?;
+
+                    kine_stat_tracker::Pallet::<T>::do_update_wallet_tokens(
+                        festival.owner, 
+                        kine_stat_tracker::FeatureType::Festival,
+                        kine_stat_tracker::TokenType::Claimable,
+                        creator_share, false,
+                    ).unwrap();
+
                     // determine the rewards (if > 0) and the voting winners
                     for (movie_id, vote_list) in festival.vote_map { 
                         for vote in vote_list {
@@ -1305,7 +1373,7 @@
                     let fes_votes = Festivals::<T>::try_get(festival_id).unwrap().vote_map;
                     for (movie_id, vote_list) in fes_votes {
                         for vote in vote_list {
-                            let amount = vote.amount;
+                            let amount = vote.amount_after_weight;
                             // amount -amount = 0 with Balance trait
                             let stat =  accumulator.entry(movie_id.clone()).or_insert(amount - amount);
                             *stat += amount;
@@ -1329,6 +1397,7 @@
     
                     // verify if movies still exist, and assign the win to the uploader
                     for movie_id in winners.clone() {
+                        // TODO-11
                         let internal_movie_exists = kine_movie::Pallet::<T>
                             ::do_does_internal_movie_exist(movie_id.clone())?;
                         let external_movie_exists = kine_movie::Pallet::<T>
