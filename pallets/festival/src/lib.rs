@@ -13,6 +13,8 @@
     //TODO-9 handle error conditions
     //TODO-10 Update WalletData to Map
     //TODO-11 Upgrade the ensure to a bool
+    //TODO-12 check: let stat =  accumulator.entry(movie_id.clone()).or_insert(BalanceOf::<T>::from(0u32));
+    // *stat += amount;
     
 
 
@@ -1101,10 +1103,11 @@
                                     // update the festival ownership status
                                     Self::do_active_to_finished_fest_ownership(fest.owner.clone(), festival_id.clone());
                                     
-                                    if fest.vote_map.values().len() > 1 {
+                                    if fest.vote_map.values().len() > 0 {
                                         fest.status = FestivalStatus::Finished;
-                                        let winners_list = Self::do_resolve_market(festival_id.clone())?;
-                                        Self::deposit_event(Event::FestivalHasEnded(festival_id.clone(), winners_list));
+                                        Self::do_resolve_market(festival_id.clone()).unwrap();
+                                        // let winners_list = Self::do_resolve_market(festival_id.clone())?;
+                                        // Self::deposit_event(Event::FestivalHasEnded(festival_id.clone(), winners_list));
                                     }
                                     else {
                                         fest.status = FestivalStatus::FinishedNotEnoughVotes;
@@ -1271,147 +1274,199 @@
     
                 fn do_resolve_market(
                     festival_id: T::FestivalId
-                ) -> Result<BoundedVec<T::AccountId, T::MaxVotes>, DispatchError> {
+                // ) -> Result<BoundedVec<T::AccountId, T::MaxVotes>, DispatchError> {
+                ) -> DispatchResultWithPostInfo {
                     
-                    let winning_opts = Self::do_get_winning_options(festival_id).unwrap();
-                    let mut winners_lockup = Self::do_get_winners_total_lockup(festival_id, winning_opts.clone()).unwrap();
-                    let mut winner_list : BoundedVec<T::AccountId, T::MaxVotes>
-                        = TryInto::try_into(Vec::new()).map_err(|_|Error::<T>::BadMetadata)?;
-                    
+                    // Get the winning movie_ids by vote power
+                    let winners = Self::do_get_winning_options(festival_id).unwrap();
+                    Self::do_assign_wins_to_uploaders(festival_id, winners.clone()).unwrap();
+
+                    // Pay the owner's share and calculate the remaining pool
                     let festival = Festivals::<T>::try_get(festival_id).unwrap();
+                    let total_lockup = Self::do_calculate_owner_reward(festival.owner, festival.total_lockup).unwrap();
                     
-                    // Assignt he creator's rewards
-                    let creator_share = 
-                        festival.total_lockup.clone()
-                        .checked_div(&50u32.into()) // 2%
-                        .ok_or(Error::<T>::Underflow)?;
+                    // get the winning voter's lockup and each of their respective winning vote lockup and the total winning votes
+                    let (winners_lockup, winning_vote_map) = Self::do_get_winners_total_lockup(festival_id, winners.clone()).unwrap();
+                    
+                    Self::do_calculate_voters_reward(total_lockup, winners_lockup, winning_vote_map).unwrap();
 
-                    winners_lockup =
-                        winners_lockup.clone()
-                        .checked_sub(&creator_share)
-                        .ok_or(Error::<T>::Underflow)?;
+                        
 
-                    kine_stat_tracker::Pallet::<T>::do_update_wallet_tokens(
-                        festival.owner, 
-                        kine_stat_tracker::FeatureType::Festival,
-                        kine_stat_tracker::TokenType::Claimable,
-                        creator_share, false,
-                    ).unwrap();
+                    // dostribute rewards after calculating
+                    // let reward = Self::do_calculate_voter_reward(
+                    //     festival.total_lockup, vote.amount.clone(), winners_lockup
+                    // ).unwrap();
+                    
+                    // kine_stat_tracker::Pallet::<T>::do_update_wallet_tokens(
+                    //     vote.voter.clone(), 
+                    //     kine_stat_tracker::FeatureType::Festival,
+                    //     kine_stat_tracker::TokenType::Claimable,
+                    //     reward, false,
+                    // ).unwrap();
 
-                    // determine the rewards (if > 0) and the voting winners
-                    for (movie_id, vote_list) in festival.vote_map { 
-                        for vote in vote_list {
-                            if winning_opts.contains(&movie_id.clone()) {
-                                // if reward_exists {
-                                let reward = Self::do_calculate_simple_reward(
-                                    festival.total_lockup, vote.amount.clone(), winners_lockup
-                                ).unwrap();
-                                kine_stat_tracker::Pallet::<T>::do_update_wallet_tokens(
-                                    vote.voter.clone(), 
-                                    kine_stat_tracker::FeatureType::Festival,
-                                    kine_stat_tracker::TokenType::Claimable,
-                                    reward, false,
-                                ).unwrap();
-                                // }
-                                winner_list.try_push(vote.voter.clone()).unwrap();
-
-                                // assign the win
-                                WalletFestivalData::<T>::try_mutate( vote.voter.clone(), |festival_data| -> DispatchResult {
-                                    let fes_data = festival_data.as_mut().ok_or(Error::<T>::NonexistentFestival)?;
-                                    
-                                    //filter the festival from the active festival list
-                                    fes_data.active_voted_festivals.retain(
-                                        |fes_id| 
-                                        fes_id != &festival_id.clone()
-                                    );
-
-                                    fes_data.finished_won_festivals.try_push(festival_id).unwrap();
-                                    Ok(())
-                                })?;
+                    // winner_list.try_push(vote.voter.clone()).unwrap();
                                 
-                            }
-                            else {
-                                // assign the loss
-                                WalletFestivalData::<T>::try_mutate( vote.voter.clone(), |festival_data| -> DispatchResult {
-                                    let fes_data = festival_data.as_mut().ok_or(Error::<T>::NonexistentFestival)?;
                                 
-                                    //filter the festival from the active festival list
-                                    fes_data.active_voted_festivals.retain(
-                                        |fes_id| 
-                                        fes_id != &festival_id.clone()
-                                    );
-
-                                    fes_data.finished_voted_festivals.try_push(festival_id).unwrap();
-                                    Ok(())
-                                })?;
-                            }
                             
-                            // unlock the tokens from the votes
-                            kine_stat_tracker::Pallet::<T>::do_update_wallet_tokens(
-                                vote.voter.clone(), 
-                                kine_stat_tracker::FeatureType::Festival,
-                                kine_stat_tracker::TokenType::Locked,
-                                vote.amount, true
-                            ).unwrap();
-                        }
+                    //         else if !voted_correctly {
+                    //             // assign the loss
+                    //             WalletFestivalData::<T>::try_mutate( vote.voter.clone(), |festival_data| -> DispatchResult {
+                    //                 let fes_data = festival_data.as_mut().ok_or(Error::<T>::NonexistentFestival)?;
+                                
+                    //                 //filter the festival from the active festival list
+                    //                 fes_data.active_voted_festivals.retain(
+                    //                     |fes_id| 
+                    //                     fes_id != &festival_id.clone()
+                    //                 );
+
+                    //                 fes_data.finished_voted_festivals.try_push(festival_id).unwrap();
+                    //                 Ok(())
+                    //             })?;
+                    //         }
+
+
+                    //         // assign the wins and losses
+                    //         WalletFestivalData::<T>::try_mutate( vote.voter.clone(), |festival_data| -> DispatchResult {
+                    //             let fes_data = festival_data.as_mut().ok_or(Error::<T>::NonexistentFestival)?;
+                                
+                    //             //filter the festival from the active festival list
+                    //             fes_data.active_voted_festivals.retain(
+                    //                 |fes_id| 
+                    //                 fes_id != &festival_id.clone()
+                    //             );
+
+                    //             fes_data.finished_won_festivals.try_push(festival_id).unwrap();
+                    //             Ok(())
+                    //         })?;
+
+                            
+
+                    // kine_stat_tracker::Pallet::<T>::do_update_wallet_tokens(
+                    //     vote.voter.clone(), 
+                    //     kine_stat_tracker::FeatureType::Festival,
+                    //     kine_stat_tracker::TokenType::Claimable,
+                    //     reward, false,
+                    // ).unwrap();
+                    //         // unlock the tokens from the votes
+                    //         kine_stat_tracker::Pallet::<T>::do_update_wallet_tokens(
+                    //             vote.voter.clone(), 
+                    //             kine_stat_tracker::FeatureType::Festival,
+                    //             kine_stat_tracker::TokenType::Locked,
+                    //             vote.amount, true
+                    //         ).unwrap();
+                    //     }
 
 
 
-                    }
+                    // }
                     
     
-                    Ok(winner_list)
+                    Ok(().into())
+                    // Ok(winner_list)
                 }
     
     
+
+
+
+
                 fn do_get_winning_options(
                     festival_id : T::FestivalId
                 ) -> Result<Vec<BoundedVec<u8, T::LinkStringLimit>>,DispatchError> {
                 
-                    let mut accumulator = BTreeMap::new();
+                    let mut vote_power_map = BTreeMap::new(); // map of movie_id: total_voting_power
     
+                    // iterate the festival's votes and calculate the total voting power of each
                     let fes_votes = Festivals::<T>::try_get(festival_id).unwrap().vote_map;
                     for (movie_id, vote_list) in fes_votes {
                         for vote in vote_list {
-                            let amount = vote.amount_after_weight;
-                            // amount -amount = 0 with Balance trait
-                            let stat =  accumulator.entry(movie_id.clone()).or_insert(amount - amount);
-                            *stat += amount;
+                            let movie_power =  vote_power_map.entry(movie_id.clone()).or_insert(BalanceOf::<T>::from(0u32));
+                            *movie_power += vote.amount_after_weight;
                         }
                     }
     
-                    let first_winner = accumulator
+                    // determine the first winner and add it to a list
+                    let first_winner = vote_power_map
                         .iter()
                         .clone()
                         .max_by_key(|p| p.1)
                         .unwrap();
-                    
                     let mut winners = vec![first_winner.0.clone()];
                     
-                    // untie by adding all entries with the same lockup
-                    for (movie, lockup) in &accumulator {
+                    // untie by adding all entries with the same lockup to the winner list
+                    for (movie, lockup) in &vote_power_map {
                         if lockup == first_winner.1 && movie != first_winner.0 {
                             winners.push(movie.clone());
                         }
                     }
     
+                    Ok(winners)
+                }
+    
+    
+
+                // Calculates both the winner's total lockup and each of the voter's individual lockup and total winning votes. 
+                fn do_get_winners_total_lockup(
+                    festival_id: T::FestivalId, 
+                    winning_movies: Vec<BoundedVec<u8, T::LinkStringLimit>>
+                ) -> Result<(BalanceOf<T>, BTreeMap<T::AccountId, (BalanceOf<T>, u32)>), DispatchError> {
+                    
+                    let mut winners_total_lockup = BalanceOf::<T>::from(0u32);
+                    let mut winning_vote_map = BTreeMap::new(); // map of voter_id: total_correct_tokens_voted
+                    
+                    let fes_votes = Festivals::<T>::try_get(festival_id).unwrap().vote_map; // movie_id: vote_list
+                    for movie_id in winning_movies {
+                        
+                        let winning_votes = fes_votes.get(&movie_id.clone()).unwrap();
+                        for vote in winning_votes {
+                            
+                            winners_total_lockup = 
+                                winners_total_lockup
+                                .checked_add(&vote.amount.clone())
+                                .ok_or(Error::<T>::Overflow)?;
+                            
+                            let (token_earning_total, winning_vote_total) =
+                                winning_vote_map
+                                .entry(vote.voter.clone())
+                                .or_insert((
+                                    BalanceOf::<T>::from(0u32),
+                                    0u32
+                                ));
+                            
+                            *token_earning_total += vote.amount;
+                            *winning_vote_total += 1u32;
+                        }
+                    }
+                
+                    Ok((winners_total_lockup, winning_vote_map))
+                }
+
+
+
+
+
+                fn do_assign_wins_to_uploaders(
+                    festival_id: T::FestivalId,
+                    winners: Vec<BoundedVec<u8, T::LinkStringLimit>>,
+                ) -> DispatchResultWithPostInfo {
+                    
                     // verify if movies still exist, and assign the win to the uploader
                     for movie_id in winners.clone() {
                         // TODO-11
-                        let internal_movie_exists = kine_movie::Pallet::<T>
-                            ::do_does_internal_movie_exist(movie_id.clone())?;
-                        let external_movie_exists = kine_movie::Pallet::<T>
-                            ::do_does_external_movie_exist(movie_id.clone())?;
-    
+                        // let internal_movie_exists = kine_movie::Pallet::<T>
+                        //     ::do_does_internal_movie_exist(movie_id.clone())?;
+                        // let external_movie_exists = kine_movie::Pallet::<T>
+                        //     ::do_does_external_movie_exist(movie_id.clone())?;
+
                         let uploader = kine_movie::Pallet::<T>
                             ::get_movie_uploader(movie_id)?;
-    
+
                         // assign wins to the uploaders of the winning movies
                         if !WalletFestivalData::<T>::contains_key(uploader.clone()) {
                             let mut new_data = Self::do_create_new_wallet_data().unwrap();
                             new_data.won_festivals.try_push(festival_id).unwrap();
                             WalletFestivalData::<T>::insert(uploader.clone(), new_data);
-    
+
                         }
                         else {
                             WalletFestivalData::<T>::try_mutate_exists( uploader.clone(), |festival_data| -> DispatchResult{
@@ -1422,59 +1477,105 @@
                             })?;
                         }
                     }
-                    
-                    Ok(winners)
+
+                    Ok(().into())
                 }
     
     
-                fn do_get_winners_total_lockup(
-                    festival_id: T::FestivalId, 
-                    winning_movies:Vec<BoundedVec<u8, T::LinkStringLimit>>
-                ) -> Result<BalanceOf<T>,DispatchError> {
-                    
-                    let fes_votes = Festivals::<T>::try_get(festival_id).unwrap().vote_map;
-                    let mut winners_total_lockup = BalanceOf::<T>::from(0u32);
-    
-                    for (movie_id, vote_list) in fes_votes {
-                        for vote in vote_list {
-                            if winning_movies.contains(&movie_id.clone()) {
-                                winners_total_lockup = 
-                                    winners_total_lockup
-                                    .checked_add(&vote.amount)
-                                    .ok_or(Error::<T>::Overflow)?;
-                            }   
-                        }
-                    }
-                
-                    Ok(winners_total_lockup)
-                }
+
+
     
     
     
-                fn do_calculate_simple_reward(
+            
+
+
+                fn do_calculate_voters_reward(
                     total_lockup: BalanceOf<T>,
-                    user_lockup: BalanceOf<T>,
-                    winner_lockup: BalanceOf<T>,
-                ) -> Result<BalanceOf<T>, DispatchError> {
-                    let thousand: BalanceOf<T> = 1000u32.into();
-    
-                    // let user_share = (user_lockup / winner_lockup);
-                    // user_lockup.saturating_mul(total_moderators.into());
-    
-                    let user_share = 
-                        winner_lockup
-                        .checked_div(&user_lockup)
-                        .ok_or(Error::<T>::Overflow)?;
-                    
-                    let user_reward = 
-                        total_lockup
-                        .checked_div(&user_share)
-                        .ok_or(Error::<T>::Overflow)?;
-    
-                    Ok(user_reward)
+                    winners_lockup: BalanceOf<T>,
+                    winning_vote_map: BTreeMap<T::AccountId, (BalanceOf<T>, u32)>,
+                ) -> DispatchResultWithPostInfo {
+
+                    let mut user_share: BalanceOf<T>;
+                    let mut user_reward: BalanceOf<T>;
+
+                    for (voter, (user_winning_votes_lockup, user_total_winning_votes)) in winning_vote_map {
+
+                        user_share = BalanceOf::<T>::from(0u32);
+                        user_share = 
+                            winners_lockup
+                            .checked_div(&user_winning_votes_lockup)
+                            .ok_or(Error::<T>::Underflow)?;
+                        
+                        user_reward = BalanceOf::<T>::from(0u32);
+                        user_reward = 
+                            total_lockup
+                            .checked_div(&user_share)
+                            .ok_or(Error::<T>::Underflow)?;
+
+                        // update the claimable tokens
+                        kine_stat_tracker::Pallet::<T>::do_update_wallet_tokens(
+                            voter.clone(), 
+                            kine_stat_tracker::FeatureType::Festival,
+                            kine_stat_tracker::TokenType::Claimable,
+                            user_reward, false,
+                        ).unwrap();
+
+
+                        // winners_lockup = 2000
+                        // user_winning_votes_lockup = 1000
+                        // user_share = 2
+
+
+
+                        // // unlock the tokens from the votes
+                        // kine_stat_tracker::Pallet::<T>::do_update_wallet_tokens(
+                        //     vote.voter.clone(), 
+                        //     kine_stat_tracker::FeatureType::Festival,
+                        //     kine_stat_tracker::TokenType::Locked,
+                        //     user_reward, true
+                        // ).unwrap();
+
+                    }
+
+                    Ok(().into())
                 }
     
     
+
+
+
+                // Returns the remainder of the prize pool, after the owner's share.
+                fn do_calculate_owner_reward(
+                    owner_id: T::AccountId,
+                    total_lockup: BalanceOf<T>,
+                ) -> Result<BalanceOf<T>, DispatchError> {
+                        
+                    let owner_share = 
+                        total_lockup
+                        .checked_div(&50u32.into()) // 2%
+                        .ok_or(Error::<T>::Underflow)?;
+
+                    kine_stat_tracker::Pallet::<T>::do_update_wallet_tokens(
+                        owner_id, 
+                        kine_stat_tracker::FeatureType::Festival,
+                        kine_stat_tracker::TokenType::Claimable,
+                        owner_share, false,
+                    ).unwrap();
+          
+                    let mut remaining_lockup =
+                        total_lockup
+                        .checked_sub(&owner_share)
+                        .ok_or(Error::<T>::Underflow)?;
+
+                    Ok(remaining_lockup)
+                }
+    
+    
+
+
+
+
                 fn do_create_new_wallet_data(
                 ) -> Result<WalletData<BoundedVec<T::FestivalId, T::MaxOwnedFestivals>>, DispatchError> {
 
