@@ -15,6 +15,7 @@
     //TODO-11 Upgrade the ensure to a bool
     //TODO-12 check: let stat =  accumulator.entry(movie_id.clone()).or_insert(BalanceOf::<T>::from(0u32));
     // *stat += amount;
+    //TODO-13 filter duplicates inside the parameter list
     
 
 
@@ -491,7 +492,7 @@
                         );
                         // ensure the festival has at least 2 movies
                         ensure!(
-                            festival.internal_movies.len() > 1 || festival.external_movies.len() > 1,
+                            festival.internal_movies.len() + festival.external_movies.len() > 1,
                             Error::<T>::NotEnoughMoviesInFestival
                         );
                         // ensure the status is AwaitingActivation
@@ -499,9 +500,6 @@
                             festival.status == FestivalStatus::AwaitingActivation,
                             Error::<T>::NotAwaitingActivation
                         );
-    
-                        // let duration_blocks: BlockNumberFor<T> =
-                        //     TryInto::try_into(0u32).map_err(|_| Error::<T>::BadMetadata).unwrap();
     
                         // ensure the block periods are valid
                         let safe_start_time = start_block
@@ -569,7 +567,7 @@
                         );
                         // ensure the festival has at least 2 movies
                         ensure!(
-                            festival.internal_movies.len() > 1 || festival.external_movies.len() > 1,
+                            festival.internal_movies.len() + festival.external_movies.len() > 1,
                             Error::<T>::NotEnoughMoviesInFestival
                         );
                         // ensure the status is AwaitingActivation
@@ -616,7 +614,6 @@
                             .checked_sub(&vote_decrease_margin)
                             .ok_or(Error::<T>::Underflow)?;
 
-                        let mut vote_decrease_block = 
                         festival.block_start_end = (start_block, end_block);
                         festival.status = FestivalStatus::Active;
                         festival.vote_power_decrease_block = power_decrease_block;
@@ -670,6 +667,8 @@
                             Error::<T>::FestivalNotAcceptingNewMovies
                         );
     
+                        //TODO-13 
+
                         // Validate the names
                         let mut validated_internal_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>
                             = TryInto::try_into(Vec::new()).unwrap();;
@@ -824,7 +823,7 @@
                         BalanceOf::<T>::from(0u32), true
                     )?;
                 
-                    Self::deposit_event(Event::FestivalTokensClaimed(who, reward));
+                    Self::deposit_event(Event::FestivalTokensClaimed(who, claimable_tokens_festival));
                     Ok(().into())
                 }	
                 
@@ -1500,25 +1499,45 @@
                     let mut user_reward: BalanceOf<T>;
 
                     for (voter, (user_winning_votes_lockup, user_total_winning_votes)) in winning_vote_map {
+                        let thousand_balance = BalanceOf::<T>::from(10000u32);
 
-                        user_share = BalanceOf::<T>::from(0u32);
+                        // user_share = BalanceOf::<T>::from(0u32);
                         user_share = 
                             winners_lockup
+                            .saturating_mul(thousand_balance)
                             .checked_div(&user_winning_votes_lockup)
                             .ok_or(Error::<T>::Underflow)?;
                         
-                        user_reward = BalanceOf::<T>::from(0u32);
+                        // user_reward = BalanceOf::<T>::from(0u32);
                         user_reward = 
                             total_lockup
                             .checked_div(&user_share)
+                            .ok_or(Error::<T>::Underflow)?
+                            .checked_div(&thousand_balance)
                             .ok_or(Error::<T>::Underflow)?;
+
+                        // // update the claimable tokens
+                        // kine_stat_tracker::Pallet::<T>::do_update_wallet_tokens(
+                        //     voter.clone(), 
+                        //     kine_stat_tracker::FeatureType::RankingList,
+                        //     kine_stat_tracker::TokenType::Claimable,
+                        //     user_winning_votes_lockup, false,
+                        // ).unwrap();
+
+                        // // update the claimable tokens
+                        // kine_stat_tracker::Pallet::<T>::do_update_wallet_tokens(
+                        //     voter.clone(), 
+                        //     kine_stat_tracker::FeatureType::RankingList,
+                        //     kine_stat_tracker::TokenType::Locked,
+                        //     winners_lockup, false,
+                        // ).unwrap();
 
                         // update the claimable tokens
                         kine_stat_tracker::Pallet::<T>::do_update_wallet_tokens(
                             voter.clone(), 
                             kine_stat_tracker::FeatureType::Festival,
                             kine_stat_tracker::TokenType::Claimable,
-                            user_reward, false,
+                            user_share, false,
                         ).unwrap();
 
 
