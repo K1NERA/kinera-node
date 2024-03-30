@@ -144,6 +144,7 @@
                     pub categories_and_tags: CategoryTagList,
                     pub internal_movies: MoviesInFest,
                     pub external_movies: MoviesInFest,
+                    pub winners: MoviesInFest,
                     pub block_start_end: BlockStartEnd,
                     pub vote_power_decrease_block: BlockNumber,
                 }
@@ -883,7 +884,8 @@
                             name: name,
                             description: description,
                             internal_movies: bounded_film_list.clone(),
-                            external_movies: bounded_film_list,
+                            external_movies: bounded_film_list.clone(),
+                            winners: bounded_film_list,
                             status: status,
                             max_entry: min_ticket_price,
                             total_lockup: zero_lockup,
@@ -1281,13 +1283,23 @@
                     Self::do_assign_wins_to_uploaders(festival_id, winners.clone()).unwrap();
 
                     // Pay the owner's share and calculate the remaining pool
-                    let festival = Festivals::<T>::try_get(festival_id).unwrap();
-                    let total_lockup = Self::do_calculate_owner_reward(festival.owner, festival.total_lockup).unwrap();
-                    
-                    // get the winning voter's lockup and each of their respective winning vote lockup and the total winning votes
-                    let (winners_lockup, winning_vote_map) = Self::do_get_winners_total_lockup(festival_id, winners.clone()).unwrap();
-                    
-                    Self::do_calculate_voters_reward(total_lockup, winners_lockup, winning_vote_map).unwrap();
+                    Festivals::<T>::try_mutate_exists(festival_id, |fest| -> DispatchResult {
+                        let mut festival = fest.as_mut().ok_or(Error::<T>::NonexistentFestival)?;  
+
+                        let bounded_winners: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>
+                            = TryInto::try_into(winners.clone()).map_err(|_|Error::<T>::BadMetadata)?;
+                        festival.winners = bounded_winners;
+    
+                        let total_lockup = Self::do_calculate_owner_reward(festival.owner.clone(), festival.total_lockup).unwrap();
+                        
+                        // get the winning voter's lockup and each of their respective winning vote lockup and the total winning votes
+                        let (winners_lockup, winning_vote_map) = Self::do_get_winners_total_lockup(festival_id, winners).unwrap();
+                        
+                        Self::do_calculate_voters_reward(total_lockup, winners_lockup, winning_vote_map).unwrap();
+
+                        Ok(())
+                    });
+
 
                         
 
