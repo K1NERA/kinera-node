@@ -228,16 +228,6 @@
                     // 	Error::<T>::WalletStatsRegistryRequired,
                     // );
     
-                    T::Currency::reserve(
-                        &who, 
-                        BalanceOf::<T>::from(T::MovieCollateral::get())
-                    );
-                    kine_stat_tracker::Pallet::<T>::do_update_wallet_tokens(
-                        who.clone(), 
-                        kine_stat_tracker::FeatureType::Movie,
-                        kine_stat_tracker::TokenType::Locked,
-                        BalanceOf::<T>::from(T::MovieCollateral::get()), false
-                    )?;
                     
                     Self::do_create_internal_movie(
                         &who, name,synopsis, movie_description,
@@ -262,17 +252,6 @@
                     // 	pallet_stat_tracker::Pallet::<T>::is_wallet_registered(who.clone())?,
                     // 	Error::<T>::WalletStatsRegistryRequired,
                     // );
-    
-                    T::Currency::reserve(
-                        &who, 
-                        BalanceOf::<T>::from(T::MovieCollateral::get())
-                    );
-                    kine_stat_tracker::Pallet::<T>::do_update_wallet_tokens(
-                        who.clone(), 
-                        kine_stat_tracker::FeatureType::Movie,
-                        kine_stat_tracker::TokenType::Locked,
-                        BalanceOf::<T>::from(T::MovieCollateral::get()), false
-                    )?;
     
                     Self::do_create_external_movie(&who, source, link, category_tag_list)?;
     
@@ -304,8 +283,19 @@
                     ipfs: String,
                     link: String,
                     category_tag_list: BoundedVec<(CategoryId<T>, TagId<T>), T::MaxTags>,
-                ) -> Result<T::InternalMovieId, DispatchError> {
+                ) -> DispatchResultWithPostInfo {
      
+                    T::Currency::reserve(
+                        &who, 
+                        BalanceOf::<T>::from(T::MovieCollateral::get())
+                    );
+                    kine_stat_tracker::Pallet::<T>::do_update_wallet_tokens(
+                        who.clone(), 
+                        kine_stat_tracker::FeatureType::Movie,
+                        kine_stat_tracker::TokenType::Locked,
+                        BalanceOf::<T>::from(T::MovieCollateral::get()), false
+                    )?;
+                    
                     let movie_id =
                         NextInternalMovieId::<T>::try_mutate(|id| -> Result<T::InternalMovieId, DispatchError> {
                             let current_id = *id;
@@ -401,7 +391,7 @@
                     )?;
 
                     Self::deposit_event(Event::InternalMovieCreated(name, who.clone()));
-                    Ok(movie_id.clone())
+                    Ok(().into())
                 } 
             
     
@@ -410,8 +400,19 @@
                     source: ExternalSource,
                     link_str: String,
                     category_tag_list: BoundedVec<(CategoryId<T>, TagId<T>), T::MaxTags>,
-                ) -> Result<BoundedVec<u8, T::LinkStringLimit>, DispatchError> {
+                ) -> DispatchResultWithPostInfo {
             
+                    T::Currency::reserve(
+                        &who, 
+                        BalanceOf::<T>::from(T::MovieCollateral::get())
+                    );
+                    kine_stat_tracker::Pallet::<T>::do_update_wallet_tokens(
+                        who.clone(), 
+                        kine_stat_tracker::FeatureType::Movie,
+                        kine_stat_tracker::TokenType::Locked,
+                        BalanceOf::<T>::from(T::MovieCollateral::get()), false
+                    )?;
+                    
                     let link: BoundedVec<u8, T::LinkStringLimit> =
                         TryInto::try_into(link_str.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?;
                     Self::do_ensure_external_movie_doesnt_exist(link.clone()).unwrap();
@@ -433,7 +434,7 @@
                     ExternalMovies::<T>::insert(link.clone(), movie.clone());
             
                     Self::deposit_event(Event::ExternalMovieCreated(link_str, who.clone()));
-                    Ok(link)
+                    Ok(().into())
                 } 
             
     
@@ -441,10 +442,10 @@
     
                 pub fn do_ensure_internal_movie_exist(
                     movie_id : BoundedVec<u8, T::LinkStringLimit>,
-                ) -> DispatchResultWithPostInfo {
+                ) -> Result<(), DispatchError> {
         
                     ensure!(InternalMovies::<T>::contains_key(movie_id), Error::<T>::NoAvailableMovieId); 
-                    Ok(().into())
+                    Ok(())
                 }
     
                 pub fn do_does_internal_movie_exist(
@@ -474,10 +475,10 @@
             
                 pub fn do_ensure_external_movie_exists(
                     movie_id : BoundedVec<u8, T::LinkStringLimit>,
-                ) -> DispatchResultWithPostInfo {
+                ) -> Result<(), DispatchError> {
         
                     ensure!(ExternalMovies::<T>::contains_key(movie_id), Error::<T>::NoAvailableMovieId); 
-                    Ok(().into())
+                    Ok(())
                 }
     
                 pub fn get_movie_uploader(

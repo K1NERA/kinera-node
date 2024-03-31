@@ -419,19 +419,9 @@
                     );
     
                     //TODO-7
-                    // for movie_id in internal_movie_ids.clone() {
-                    //     ensure!(
-                    //         kine_movie::Pallet::<T>::do_does_internal_movie_exist(movie_id.clone())?,
-                    //         Error::<T>::NonexistentMovie,
-                    //     );
-                    // }
-    
-                    // for movie_id in external_movie_ids.clone() {
-                    //     ensure!(
-                    //         kine_movie::Pallet::<T>::do_does_external_movie_exist(movie_id.clone())?,
-                    //         Error::<T>::NonexistentMovie,
-                    //     );
-                    // }
+                    let (bounded_internal_movie_ids, bounded_external_movie_ids) 
+                        = Self::do_validate_add_movies_to_new_festival(internal_movie_ids.clone(), external_movie_ids.clone())?;
+
     
                     // validate category and tag
                     let category_type: kine_tags::CategoryType<T>
@@ -446,7 +436,7 @@
                     let festival_id = Self::do_create_festival(
                         who.clone(),
                         bounded_name, bounded_description, max_entry,
-                        internal_movie_ids, external_movie_ids,
+                        bounded_internal_movie_ids, bounded_external_movie_ids,
                         category_tag_list.clone(), FestivalStatus::AwaitingActivation
                     )?;
                     Self::do_bind_owners_to_festival(who.clone(), festival_id)?;
@@ -646,20 +636,10 @@
                     // 	Error::<T>::WalletStatsRegistryRequired,
                     // );
     
+                    //TODO-13 
                     //TODO-7
-                    // for movie_id in internal_movie_ids.clone() {
-                    //     ensure!(
-                    //         kine_movie::Pallet::<T>::do_does_internal_movie_exist(movie_id.clone())?,
-                    //         Error::<T>::NonexistentMovie,
-                    //     );
-                    // }
-    
-                    // for movie_id in external_movie_ids.clone() {
-                    //     ensure!(
-                    //         kine_movie::Pallet::<T>::do_does_external_movie_exist(movie_id.clone())?,
-                    //         Error::<T>::NonexistentMovie,
-                    //     );
-                    // }
+                    let (bounded_internal_movie_ids, bounded_external_movie_ids) 
+                        = Self::do_validate_add_movies_to_existing_festival(festival_id.clone(), internal_movie_ids.clone(), external_movie_ids.clone())?;
     
                     Festivals::<T>::try_mutate_exists(festival_id, |festival| -> DispatchResult {
                         let fes = festival.as_mut().ok_or(Error::<T>::NonexistentFestival)?;
@@ -668,41 +648,15 @@
                             Error::<T>::FestivalNotAcceptingNewMovies
                         );
     
-                        //TODO-13 
-
-                        // Validate the names
-                        let mut validated_internal_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>
-                            = TryInto::try_into(Vec::new()).unwrap();;
-                        for internal_movie in internal_movie_ids {
-                            validated_internal_movie_ids.try_push(
-                                TryInto::try_into(internal_movie.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?
-                            );
-                        }
-                        let mut validated_external_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>
-                            = TryInto::try_into(Vec::new()).unwrap();;
-                        for external_movie in external_movie_ids {
-                            validated_external_movie_ids.try_push(
-                                TryInto::try_into(external_movie.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?
-                            );
-                        }
-
-                        // filter out movies already in the festival
-                        validated_internal_movie_ids.retain(
-                            |movie_id| 
-                            !fes.internal_movies.contains(movie_id)
-                        );
-                        validated_external_movie_ids.retain(
-                            |movie_id| 
-                            !fes.external_movies.contains(movie_id)
-                        );
     
                         // add the movies to the festival
-                        for internal_movie in validated_internal_movie_ids {
+                        for internal_movie in bounded_internal_movie_ids {
                             fes.internal_movies.try_push(internal_movie);
                         }
     
                         // add the movies to the festival
-                        for external_movie in validated_external_movie_ids {
+
+                        for external_movie in bounded_external_movie_ids {
                             fes.external_movies.try_push(external_movie);
                         }
                         
@@ -844,8 +798,8 @@
                         name_str: String,
                         description_str: String,
                         min_ticket_price: BalanceOf<T>,
-                        internal_movie_ids: BoundedVec<String, T::MaxMoviesInFest>,
-                        external_movie_ids: BoundedVec<String, T::MaxMoviesInFest>,
+                        internal_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>,
+                        external_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>,
                         category_tag_list: BoundedVec<(CategoryId<T>, TagId<T>), T::MaxTags>,
                         status: FestivalStatus,
                     ) -> Result<T::FestivalId, DispatchError> {
@@ -894,30 +848,15 @@
                             block_start_end: (BlockNumberFor::<T>::from(0u32), BlockNumberFor::<T>::from(0u32)),
                             vote_power_decrease_block: BlockNumberFor::<T>::from(0u32),
                         };
-    
-                        // Validate the names
-                        let mut validated_internal_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>
-                            = TryInto::try_into(Vec::new()).unwrap();
-                        for internal_movie in internal_movie_ids {
-                            validated_internal_movie_ids.try_push(
-                                TryInto::try_into(internal_movie.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?
-                            );
-                        }
-                        let mut validated_external_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>
-                            = TryInto::try_into(Vec::new()).unwrap();
-                        for external_movie in external_movie_ids {
-                            validated_external_movie_ids.try_push(
-                                TryInto::try_into(external_movie.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?
-                            );
-                        }
+
                         
                         // add the movies to the festival
-                        for movie_id in validated_internal_movie_ids {
+                        for movie_id in internal_movie_ids {
                             festival.internal_movies.try_push(movie_id);
                         }
     
                         // add the movies to the festival
-                        for movie_id in validated_external_movie_ids {
+                        for movie_id in external_movie_ids {
                             festival.external_movies.try_push(movie_id);
                         }
     
@@ -1270,7 +1209,95 @@
                         <T as Config>::PalletId::get().try_into_account().unwrap()
                     }
     
+
+
+                    // converts the strings into a bounded vec
+                    // ensure the movie is registered in the movie pallet
+                    fn do_validate_add_movies_to_new_festival(
+                        internal_movie_ids: BoundedVec<String, T::MaxMoviesInFest>,
+                        external_movie_ids: BoundedVec<String, T::MaxMoviesInFest>,
+                    ) -> Result<(BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>, BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>), DispatchError> {
+                        
+                        let mut bounded_movie_name: BoundedVec<u8, T::LinkStringLimit>;
+
+                        // validate internal movies
+                        let mut validated_internal_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>
+                            = TryInto::try_into(Vec::new()).unwrap();
+                        
+                        for internal_movie in internal_movie_ids {
+                            bounded_movie_name = TryInto::try_into(internal_movie.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?;
+                            kine_movie::Pallet::<T>::do_ensure_internal_movie_exist(bounded_movie_name.clone())?;
+                            validated_internal_movie_ids.try_push(bounded_movie_name);
+                        }
+
+                        // validate external movies
+                        let mut validated_external_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>
+                            = TryInto::try_into(Vec::new()).unwrap();
+                        
+                        for external_movie in external_movie_ids {
+                            bounded_movie_name = TryInto::try_into(external_movie.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?;
+                            kine_movie::Pallet::<T>::do_ensure_external_movie_exists(bounded_movie_name.clone())?;
+                            validated_external_movie_ids.try_push(bounded_movie_name);
+                        }
+                        
+                        Ok((validated_internal_movie_ids, validated_external_movie_ids))
+                    }
+
+
+
+                    // converts the strings into a bounded vec
+                    // ensure the movie is registered in the movie pallet
+                    // ensure the movie isnt already in the festival
+                    fn do_validate_add_movies_to_existing_festival(
+                        festival_id: T::FestivalId,
+                        internal_movie_ids: BoundedVec<String, T::MaxMoviesInFest>,
+                        external_movie_ids: BoundedVec<String, T::MaxMoviesInFest>,
+                    ) -> Result<(BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>, BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>), DispatchError> {
+                        
+                        let (validated_internal_movie_ids, validated_external_movie_ids) = Festivals::<T>::try_mutate_exists(festival_id, |fest| -> 
+                        Result<(BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>, BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>), DispatchError> {
+                            let festival = fest.as_mut().ok_or(Error::<T>::NonexistentFestival)?; 
+
+                            let mut bounded_movie_name: BoundedVec<u8, T::LinkStringLimit>;
+
+                            // create aux lists
+                            let mut validated_internal_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>
+                                = TryInto::try_into(Vec::new()).unwrap();
+                            let mut validated_external_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>
+                                = TryInto::try_into(Vec::new()).unwrap();
+
+                            // validate internal movies
+                            for internal_movie in internal_movie_ids {
+                                bounded_movie_name = TryInto::try_into(internal_movie.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?;
+                                kine_movie::Pallet::<T>::do_ensure_internal_movie_exist(bounded_movie_name.clone())?;
+                                ensure!(!festival.internal_movies.contains(&bounded_movie_name), Error::<T>::NoFestivalAdminAccess);
+                                validated_internal_movie_ids.try_push(bounded_movie_name);
+                            }
     
+                            // validate external movies
+                            for external_movie in external_movie_ids {
+                                bounded_movie_name = TryInto::try_into(external_movie.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?;
+                                kine_movie::Pallet::<T>::do_ensure_external_movie_exists(bounded_movie_name.clone())?;
+                                validated_external_movie_ids.try_push(bounded_movie_name);
+                            }
+
+                            Ok((validated_internal_movie_ids, validated_external_movie_ids))
+                        
+                        })?;
+
+                        
+                        
+                        
+                        Ok((validated_internal_movie_ids, validated_external_movie_ids))
+                    }
+    
+
+
+
+
+
+
+
                 /* Votes */
     
                 fn do_resolve_market(
