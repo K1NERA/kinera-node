@@ -1269,7 +1269,7 @@
                             // validate internal movies
                             for internal_movie in internal_movie_ids {
                                 bounded_movie_name = TryInto::try_into(internal_movie.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?;
-                                kine_movie::Pallet::<T>::do_ensure_internal_movie_exist(bounded_movie_name.clone())?;
+                                // kine_movie::Pallet::<T>::do_ensure_internal_movie_exist(bounded_movie_name.clone())?;
                                 ensure!(!festival.internal_movies.contains(&bounded_movie_name), Error::<T>::NoFestivalAdminAccess);
                                 validated_internal_movie_ids.try_push(bounded_movie_name);
                             }
@@ -1277,7 +1277,7 @@
                             // validate external movies
                             for external_movie in external_movie_ids {
                                 bounded_movie_name = TryInto::try_into(external_movie.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?;
-                                kine_movie::Pallet::<T>::do_ensure_external_movie_exists(bounded_movie_name.clone())?;
+                                // kine_movie::Pallet::<T>::do_ensure_external_movie_exists(bounded_movie_name.clone())?;
                                 validated_external_movie_ids.try_push(bounded_movie_name);
                             }
 
@@ -1285,8 +1285,6 @@
                         
                         })?;
 
-                        
-                        
                         
                         Ok((validated_internal_movie_ids, validated_external_movie_ids))
                     }
@@ -1307,7 +1305,7 @@
                     
                     // Get the winning movie_ids by vote power
                     let winners = Self::do_get_winning_options(festival_id).unwrap();
-                    Self::do_assign_wins_to_uploaders(festival_id, winners.clone()).unwrap();
+                    // Self::do_assign_wins_to_uploaders(festival_id, winners.clone()).unwrap();
 
                     // Pay the owner's share and calculate the remaining pool
                     Festivals::<T>::try_mutate_exists(festival_id, |fest| -> DispatchResult {
