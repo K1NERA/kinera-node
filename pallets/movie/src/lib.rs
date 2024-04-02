@@ -444,7 +444,7 @@
                     movie_id : BoundedVec<u8, T::LinkStringLimit>,
                 ) -> Result<(), DispatchError> {
         
-                    ensure!(InternalMovies::<T>::contains_key(movie_id), Error::<T>::NoAvailableMovieId); 
+                   // ensure!(InternalMovies::<T>::contains_key(movie_id), Error::<T>::NoAvailableMovieId); 
                     Ok(())
                 }
     
@@ -469,7 +469,7 @@
                     movie_id : BoundedVec<u8, T::LinkStringLimit>,
                 ) -> DispatchResultWithPostInfo {
         
-                    ensure!(!ExternalMovies::<T>::contains_key(movie_id), Error::<T>::NoAvailableMovieId); 
+                    //ensure!(!ExternalMovies::<T>::contains_key(movie_id), Error::<T>::NoAvailableMovieId); 
                     Ok(().into())
                 }
             
@@ -477,7 +477,7 @@
                     movie_id : BoundedVec<u8, T::LinkStringLimit>,
                 ) -> Result<(), DispatchError> {
         
-                    ensure!(ExternalMovies::<T>::contains_key(movie_id), Error::<T>::NoAvailableMovieId); 
+                    //ensure!(ExternalMovies::<T>::contains_key(movie_id), Error::<T>::NoAvailableMovieId); 
                     Ok(())
                 }
     

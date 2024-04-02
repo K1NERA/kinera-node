@@ -260,7 +260,7 @@
                 VotedForMovieInFestival(T::FestivalId, String, T::AccountId),
                 FestivalHasBegun(T::FestivalId),
                 // FestivalHasEnded(T::FestivalId), //TODO-6
-                FestivalHasEnded(T::FestivalId, BoundedVec<T::AccountId, T::MaxVotes>), 
+                FestivalHasEnded(T::FestivalId, Vec<T::AccountId>, Vec<BoundedVec<u8, T::LinkStringLimit>>), 
                 FestivalHasEndedUnsuccessfully(T::FestivalId),
                 FestivalActivated(T::FestivalId, T::AccountId),
                 FestivalTokensClaimed(T::AccountId, BalanceOf<T>),
@@ -1045,9 +1045,8 @@
                                     
                                     if fest.vote_map.values().len() > 0 {
                                         fest.status = FestivalStatus::Finished;
-                                        Self::do_resolve_market(festival_id.clone()).unwrap();
-                                        // let winners_list = Self::do_resolve_market(festival_id.clone())?;
-                                        // Self::deposit_event(Event::FestivalHasEnded(festival_id.clone(), winners_list));
+                                        let (winning_voters, winning_movies) = Self::do_resolve_market(festival_id.clone())?;
+                                        Self::deposit_event(Event::FestivalHasEnded(festival_id.clone(), winning_voters, winning_movies));
                                     }
                                     else {
                                         fest.status = FestivalStatus::FinishedNotEnoughVotes;
@@ -1300,37 +1299,38 @@
     
                 fn do_resolve_market(
                     festival_id: T::FestivalId
-                // ) -> Result<BoundedVec<T::AccountId, T::MaxVotes>, DispatchError> {
-                ) -> DispatchResultWithPostInfo {
+                ) -> Result<(Vec<T::AccountId>, Vec<BoundedVec<u8, T::LinkStringLimit>>), DispatchError> {
                     
                     // Get the winning movie_ids by vote power
-                    let winners = Self::do_get_winning_options(festival_id).unwrap();
-                    // Self::do_assign_wins_to_uploaders(festival_id, winners.clone()).unwrap();
+                    let winning_movies = Self::do_get_winning_options(festival_id).unwrap();
+                    let bounded_winning_movies: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>
+                        = TryInto::try_into(winning_movies.clone()).map_err(|_|Error::<T>::BadMetadata)?;
+
+                    // Self::do_assign_wins_to_uploaders(festival_id, winning_movies.clone()).unwrap();
 
                     // Pay the owner's share and calculate the remaining pool
-                    Festivals::<T>::try_mutate_exists(festival_id, |fest| -> DispatchResult {
+                    let winning_voters = Festivals::<T>::try_mutate_exists(festival_id, |fest| 
+                    -> Result<Vec<T::AccountId>, DispatchError> {
                         let mut festival = fest.as_mut().ok_or(Error::<T>::NonexistentFestival)?;  
 
-                        let bounded_winners: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>
-                            = TryInto::try_into(winners.clone()).map_err(|_|Error::<T>::BadMetadata)?;
-                        festival.winners = bounded_winners;
+                        festival.winners = bounded_winning_movies;
     
                         let total_lockup = Self::do_calculate_owner_reward(festival.owner.clone(), festival.total_lockup).unwrap();
                         
                         // get the winning voter's lockup and each of their respective winning vote lockup and the total winning votes
-                        let (winners_lockup, winning_vote_map) = Self::do_get_winners_total_lockup(festival_id, winners).unwrap();
+                        let (winning_voters_lockup, winning_vote_map) = Self::do_get_winners_total_lockup(festival_id, winning_movies.clone()).unwrap();
                         
-                        Self::do_calculate_voters_reward(total_lockup, winners_lockup, winning_vote_map).unwrap();
+                        Self::do_calculate_voters_reward(total_lockup, winning_voters_lockup, winning_vote_map.clone()).unwrap();
 
-                        Ok(())
-                    });
+                        Ok(winning_vote_map.into_keys().collect())
+                    })?;
 
 
                         
 
                     // dostribute rewards after calculating
                     // let reward = Self::do_calculate_voter_reward(
-                    //     festival.total_lockup, vote.amount.clone(), winners_lockup
+                    //     festival.total_lockup, vote.amount.clone(), winning_voters_lockup
                     // ).unwrap();
                     
                     // kine_stat_tracker::Pallet::<T>::do_update_wallet_tokens(
@@ -1397,8 +1397,7 @@
                     // }
                     
     
-                    Ok(().into())
-                    // Ok(winner_list)
+                    Ok((winning_voters, winning_movies))
                 }
     
     
