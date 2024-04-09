@@ -9,6 +9,8 @@
 	//TODO-3 validate the inserted deadline when creating a ranking list
 	//TODO-4 improve the blocks_per_year calculation by creating a static variable in stat-tracker
 	//TODO-5 sort tied entries by total votes after sorting the winners
+	//TODO-6 optimize into a map of maps, to avoid iterating the list.
+	//TODO-7 reimplement conviction, currently locked at x1 when resolving_list, and does nothing
 
 
 	#![cfg_attr(not(feature = "std"), no_std)]
@@ -151,12 +153,12 @@
 					pub list_duration: BlockNumber,
 					pub list_deadline: BlockNumber,
 					pub movies_in_list: MovieList, // this becomes a sorted winner list after the "list_deadline" block
-					pub votes_by_user: VoteMap,
+					pub votes_by_user: VoteMap, // map of type {user_id : {movie_id : vote}}
 					pub total_lockup: Balance,
 					pub categories_and_tags: CategoryTagList,
 				}
 	
-				#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug,TypeInfo,MaxEncodedLen)]
+				#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 				pub struct RankingVote<MovieId, BalanceOf, BlockNumber> {
 					pub movie_id: MovieId,
 					pub locked_amount: BalanceOf,
@@ -165,12 +167,12 @@
 				}
 	
 	
-				#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug,TypeInfo,MaxEncodedLen)]
+				#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 				pub struct Deadlines<BoundedRankingLists> {
 					pub list_deadlines: BoundedRankingLists,
 				}
 	
-				#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug,TypeInfo,MaxEncodedLen)]
+				#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo, MaxEncodedLen)]
 				pub struct UserVoteList<RankingListId> {
 					pub user_vote_list: RankingListId,
 				}
@@ -220,11 +222,14 @@
 						Pallet::<T>::create_list_deadline(ranking_list_id, list_deadline_block).unwrap();
 					
 						let votes_by_user: BoundedBTreeMap<
-							T::AccountId,
-							BoundedVec<
-								RankingVote<BoundedVec<u8, T::LinkStringLimit>, BalanceOf<T>, BlockNumberFor<T>>, T::MaxVotersPerList>,
-								T::MaxVotersPerList,
-							> 
+							T::AccountId, 
+							BoundedBTreeMap<
+								BoundedVec<u8, T::LinkStringLimit>, 
+								RankingVote<BoundedVec<u8, T::LinkStringLimit>, BalanceOf<T>, BlockNumberFor<T>>, 
+								T::MaxVotersPerList
+							>, 
+							T::MaxVotersPerList,
+						>
 						= BoundedBTreeMap::new();
 						let total_lockup = BalanceOf::<T>::from(0u32);
 	
@@ -276,14 +281,20 @@
 					BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInList>, //Movies in List
 					BoundedBTreeMap<
 						T::AccountId, 
-						BoundedVec<RankingVote<BoundedVec<u8, T::LinkStringLimit>, BalanceOf<T>, BlockNumberFor<T>>, T::MaxVotersPerList>, 
-						T::MaxVotersPerList
+						BoundedBTreeMap<
+							BoundedVec<u8, T::LinkStringLimit>, 
+							RankingVote<BoundedVec<u8, T::LinkStringLimit>, BalanceOf<T>, BlockNumberFor<T>>, 
+							T::MaxVotersPerList
+						>, 
+						T::MaxVotersPerList,
 					>,
 					BalanceOf<T>,
 					BoundedVec<(CategoryId<T>, TagId<T>), T::MaxTags>,
 				>
 			>;
 	
+
+			
 	
 			// Matches a block number to all ranking list's that need to be refreshed.
 			// After the set block, the entries are wiped to conserve
@@ -332,6 +343,7 @@
 				ListDurationTooShort,
 				WalletStatsRegistryRequired,
 				NoVoteInList,
+				NoVoteForMovie,
 				UnstakeValueTooHigh,
 				NoClaimableTokens,
 			}
@@ -409,9 +421,14 @@
 	
 					// create the vote's structure, pairing AccountIds to the Vote info.
 					let votes_by_user: BoundedBTreeMap<
-						T::AccountId,
-						BoundedVec<RankingVote<BoundedVec<u8, T::LinkStringLimit>, BalanceOf<T>, BlockNumberFor<T>>, T::MaxVotersPerList>,
-						T::MaxVotersPerList> 
+						T::AccountId, 
+						BoundedBTreeMap<
+							BoundedVec<u8, T::LinkStringLimit>, 
+							RankingVote<BoundedVec<u8, T::LinkStringLimit>, BalanceOf<T>, BlockNumberFor<T>>, 
+							T::MaxVotersPerList
+						>, 
+						T::MaxVotersPerList,
+					>
 					= BoundedBTreeMap::new();
 					let total_lockup = BalanceOf::<T>::from(0u32);
 	
@@ -458,9 +475,9 @@
 	
 					let who = ensure_signed(origin)?;
 					ensure!(amount > BalanceOf::<T>::from(0u32), Error::<T>::VoteAmountCannotBeZero);
-					if conviction == Conviction::None {
-						ensure!(amount >= BalanceOf::<T>::from(10u32), Error::<T>::VoteAmountTooLowForNoConviction);
-					}
+					// if conviction == Conviction::None {
+					// 	ensure!(amount >= BalanceOf::<T>::from(10u32), Error::<T>::VoteAmountTooLowForNoConviction);
+					// }
 					
 					let movie_id: BoundedVec<u8, T::LinkStringLimit> =
 						TryInto::try_into(movie_id_str.as_bytes().to_vec()).map_err(|_| Error::<T>::BadMetadata)?;
@@ -501,21 +518,37 @@
 							conviction: conviction.clone(),
 							unlock_block: unlock_block,
 						};
+
 						
-						// create a new vote list, with the user's vote in it and add it
+						// The voter hasn't voted in the list yet
 						if !list.votes_by_user.contains_key(&who.clone()) {
-							let mut user_votes: BoundedVec<RankingVote<BoundedVec<u8, T::LinkStringLimit>, BalanceOf<T>, BlockNumberFor<T>>, T::MaxVotersPerList> =
-								TryInto::try_into(Vec::new()).map_err(|_| Error::<T>::BadMetadata)?;
-							user_votes.try_push(vote).unwrap();
+							// create a new vote list, with the user's vote in it and add it
+							let mut user_votes: BoundedBTreeMap<
+								BoundedVec<u8, T::LinkStringLimit>, 
+								RankingVote<BoundedVec<u8, T::LinkStringLimit>, BalanceOf<T>, BlockNumberFor<T>>, 
+								T::MaxVotersPerList
+							> = BoundedBTreeMap::new();
+							user_votes.try_insert(movie_id.clone(), vote).unwrap();
 							list.votes_by_user.try_insert(who.clone(), user_votes).unwrap();
 						}
-						// the voter has voted in the list, add a new vote
+						// The voter has voted in the list, add a new vote
 						else {
-							let mut votes = list.votes_by_user.get_mut(&who.clone()).unwrap();
-							votes.try_push(vote).unwrap();
+							let mut user_votes = list.votes_by_user.get_mut(&who.clone()).unwrap();
+							// the voter hasn't voted for the movie, add a vote entry for it
+							if !user_votes.contains_key(&movie_id.clone()) {
+								user_votes.try_insert(movie_id.clone(), vote).unwrap();
+							}
+							// The voter has already voted for the specific movie, update the entry
+							else {
+								let mut movie_vote = user_votes.get_mut(&movie_id.clone()).unwrap();
+								movie_vote.locked_amount =
+									movie_vote.locked_amount
+									.checked_add(&amount.clone())
+									.ok_or(Error::<T>::Overflow)?;
+							}
 						}
 
-						list.movies_in_list.try_push(movie_id.clone()).unwrap();
+						list.movies_in_list.try_push(movie_id).unwrap();
 
 						Ok(().into())
 					})?;
@@ -539,15 +572,15 @@
 	
 					let who = ensure_signed(origin)?;
 					ensure!(amount > BalanceOf::<T>::from(0u32), Error::<T>::VoteAmountCannotBeZero);
-					if conviction == Conviction::None {
-						ensure!(amount >= BalanceOf::<T>::from(10u32), Error::<T>::VoteAmountTooLowForNoConviction);
-					}
+					// if conviction == Conviction::None {
+					// 	ensure!(amount >= BalanceOf::<T>::from(10u32), Error::<T>::VoteAmountTooLowForNoConviction);
+					// }
 					
-					let movie_link: BoundedVec<u8, T::LinkStringLimit> =
+					let movie_id: BoundedVec<u8, T::LinkStringLimit> =
 						TryInto::try_into(movie_link_str.as_bytes().to_vec()).map_err(|_| Error::<T>::BadMetadata)?;
 
 					// ensure movie exists
-					let does_movie_exist = kine_movie::Pallet::<T>::do_does_external_movie_exist(movie_link.clone())?;
+					let does_movie_exist = kine_movie::Pallet::<T>::do_does_external_movie_exist(movie_id.clone())?;
 					if !does_movie_exist {
 						kine_movie::Pallet::<T>::do_create_external_movie(
 							&who.clone(),
@@ -562,7 +595,7 @@
 						let list = ranking_list.as_mut().ok_or(Error::<T>::BadMetadata)?;
 	
 						// ensure no entry for the movie exists in the ranking list
-						ensure!(!list.movies_in_list.contains(&movie_link.clone()), Error::<T>::MovieAlreadyInList);
+						ensure!(!list.movies_in_list.contains(&movie_id.clone()), Error::<T>::MovieAlreadyInList);
 	
 						// transfer amount to this pallet's vault
 						T::Currency::transfer(
@@ -586,27 +619,42 @@
 						// create the Vote
 						let unlock_block = Self::do_calculate_unlock_block(conviction).unwrap();
 						let vote = RankingVote {
-							movie_id: movie_link.clone(),
+							movie_id: movie_id.clone(),
 							locked_amount: amount,
 							conviction: conviction,
 							unlock_block: unlock_block,
 						};
 		
 
-						// create a new vote list, with the user's vote in it and add it
+						// The voter hasn't voted in the list yet
 						if !list.votes_by_user.contains_key(&who.clone()) {
-							let mut user_votes: BoundedVec<RankingVote<BoundedVec<u8, T::LinkStringLimit>, BalanceOf<T>, BlockNumberFor<T>>, T::MaxVotersPerList> =
-								TryInto::try_into(Vec::new()).map_err(|_| Error::<T>::BadMetadata)?;
-							user_votes.try_push(vote).unwrap();
+							// create a new vote list, with the user's vote in it and add it
+							let mut user_votes: BoundedBTreeMap<
+								BoundedVec<u8, T::LinkStringLimit>, 
+								RankingVote<BoundedVec<u8, T::LinkStringLimit>, BalanceOf<T>, BlockNumberFor<T>>, 
+								T::MaxVotersPerList
+							> = BoundedBTreeMap::new();
+							user_votes.try_insert(movie_id.clone(), vote).unwrap();
 							list.votes_by_user.try_insert(who.clone(), user_votes).unwrap();
 						}
-						// the voter has voted in the list, add a new vote
+						// The voter has voted in the list, add a new vote
 						else {
-							let mut votes = list.votes_by_user.get_mut(&who.clone()).unwrap();
-							votes.try_push(vote).unwrap();
+							let mut user_votes = list.votes_by_user.get_mut(&who.clone()).unwrap();
+							// the voter hasn't voted for the movie, add a vote entry for it
+							if !user_votes.contains_key(&movie_id.clone()) {
+								user_votes.try_insert(movie_id.clone(), vote).unwrap();
+							}
+							// The voter has already voted for the specific movie, update the entry
+							else {
+								let mut movie_vote = user_votes.get_mut(&movie_id.clone()).unwrap();
+								movie_vote.locked_amount =
+									movie_vote.locked_amount
+									.checked_add(&amount.clone())
+									.ok_or(Error::<T>::Overflow)?;
+							}
 						}
 
-						list.movies_in_list.try_push(movie_link.clone()).unwrap();
+						list.movies_in_list.try_push(movie_id).unwrap();
 					
 						Ok(().into())
 					})?;
@@ -632,9 +680,9 @@
 					// ensure ranking list id exists
 					ensure!(RankingLists::<T>::contains_key(list_id.clone()), Error::<T>::RankingListNotFound);
 					ensure!(amount > BalanceOf::<T>::from(0u32), Error::<T>::VoteAmountCannotBeZero);
-					if conviction == Conviction::None {
-						ensure!(amount >= BalanceOf::<T>::from(10u32), Error::<T>::VoteAmountTooLowForNoConviction);
-					}
+					// if conviction == Conviction::None {
+					// 	ensure!(amount >= BalanceOf::<T>::from(10u32), Error::<T>::VoteAmountTooLowForNoConviction);
+					// }
 					
 					//mutate the storage, while creating the Vote & bonding
 					RankingLists::<T>::try_mutate_exists(list_id, |ranking_list| -> DispatchResult {
@@ -676,17 +724,32 @@
 						// retrieve the votes for the ranking list
 						
 						
-						// create a new vote list, with the user's vote in it and add it
+						// The voter hasn't voted in the list yet
 						if !list.votes_by_user.contains_key(&who.clone()) {
-							let mut user_votes: BoundedVec<RankingVote<BoundedVec<u8, T::LinkStringLimit>, BalanceOf<T>, BlockNumberFor<T>>, T::MaxVotersPerList> =
-								TryInto::try_into(Vec::new()).map_err(|_| Error::<T>::BadMetadata)?;
-							user_votes.try_push(vote).unwrap();
+							// create a new vote list, with the user's vote in it and add it
+							let mut user_votes: BoundedBTreeMap<
+								BoundedVec<u8, T::LinkStringLimit>, 
+								RankingVote<BoundedVec<u8, T::LinkStringLimit>, BalanceOf<T>, BlockNumberFor<T>>, 
+								T::MaxVotersPerList
+							> = BoundedBTreeMap::new();
+							user_votes.try_insert(movie_id.clone(), vote).unwrap();
 							list.votes_by_user.try_insert(who.clone(), user_votes).unwrap();
 						}
-						// the voter has voted in the list, add a new vote
+						// The voter has voted in the list, add a new vote
 						else {
-							let mut votes = list.votes_by_user.get_mut(&who.clone()).unwrap();
-							votes.try_push(vote).unwrap();
+							let mut user_votes = list.votes_by_user.get_mut(&who.clone()).unwrap();
+							// the voter hasn't voted for the movie, add a vote entry for it
+							if !user_votes.contains_key(&movie_id.clone()) {
+								user_votes.try_insert(movie_id.clone(), vote).unwrap();
+							}
+							// The voter has already voted for the specific movie, update the entry
+							else {
+								let mut movie_vote = user_votes.get_mut(&movie_id.clone()).unwrap();
+								movie_vote.locked_amount =
+									movie_vote.locked_amount
+									.checked_add(&amount.clone())
+									.ok_or(Error::<T>::Overflow)?;
+							}
 						}
 						
 						Ok(().into())
@@ -721,59 +784,49 @@
 						// ensure ranking list contains movie
 						ensure!(list.movies_in_list.contains(&movie_id), Error::<T>::MovieNotInRankingList);
 						
-						// ensure user has voted
-						let mut votes = list.votes_by_user.get_mut(&who.clone());
-						ensure!(votes != None, Error::<T>::NoVoteInList);
+						// ensure user has voted and get the vote
+						ensure!(list.votes_by_user.contains_key(&who.clone()), Error::<T>::NoVoteInList);
+						let mut movie_votes_map = list.votes_by_user.get_mut(&who.clone()).unwrap();
+						ensure!(movie_votes_map.contains_key(&movie_id.clone()), Error::<T>::NoVoteForMovie);
+						let mut movie_vote = movie_votes_map.get_mut(&movie_id.clone()).unwrap();
 
-						// unwrap vote list and find the vote for this movie
-						let mut vote_to_remove : RankingVote<BoundedVec<u8, T::LinkStringLimit>, BalanceOf<T>, BlockNumberFor<T>>; // used if the vote amount reaches 0
-						let unwrapped_votes = votes.unwrap();
-						for vote in unwrapped_votes {
-							if vote.movie_id == movie_id {
+						ensure!(amount <= movie_vote.locked_amount, Error::<T>::UnstakeValueTooHigh);
 
-								// ensure enough balance to unstake
-								ensure!(amount <= vote.locked_amount, Error::<T>::UnstakeValueTooHigh);
-
-								// ensure enough blocks have passed, due to conviction
-								ensure!(
-									<frame_system::Pallet<T>>::block_number() >= vote.unlock_block, 
-									Error::<T>::VoteValueStillLockedWithConviction
-								);
-								
-								// transfer amount to the wallet from this pallet's vault
-								T::Currency::transfer(
-									&Self::account_id(), 
-									&who.clone(),
-									amount.clone(), 
-									AllowDeath
-								);
-								kine_stat_tracker::Pallet::<T>::do_update_wallet_tokens(
-									who.clone(), 
-									kine_stat_tracker::FeatureType::RankingList,
-									kine_stat_tracker::TokenType::Locked,
-									amount.clone(), false
-								).unwrap();
-		
-								// update locked values
-								list.total_lockup =
-									list.total_lockup
-									.checked_sub(&amount.clone())
-									.ok_or(Error::<T>::Overflow)?;
-								vote.locked_amount =
-									vote.locked_amount
-									.checked_sub(&amount.clone())
-									.ok_or(Error::<T>::Overflow)?;
-
-								if vote.locked_amount == BalanceOf::<T>::from(0u32) {
-									vote_to_remove = vote.clone();
-								}
-							}
+						list.total_lockup =
+							list.total_lockup
+							.checked_sub(&amount.clone())
+							.ok_or(Error::<T>::Overflow)?;
+						
+						// withdraw all the value and erase the vote
+						if amount == movie_vote.locked_amount {
+							movie_votes_map.remove(&movie_id);
+						}
+						// withdraw some value from the vote
+						else {
+							movie_vote.locked_amount =
+								movie_vote.locked_amount
+								.checked_sub(&amount.clone())
+								.ok_or(Error::<T>::Overflow)?;
 						}
 
+						// transfer the value to the user
+						kine_stat_tracker::Pallet::<T>::do_update_wallet_tokens(
+							who.clone(), 
+							kine_stat_tracker::FeatureType::RankingList,
+							kine_stat_tracker::TokenType::Locked,
+							amount.clone(), true
+						).unwrap();
 
-						
+						T::Currency::transfer(
+							&Self::account_id(), 
+							&who.clone(),
+							amount.clone(), 
+							AllowDeath
+						);
+
 						Ok(().into())
 					})?;
+
 					
 					Self::deposit_event(Event::VotedInList(who, list_id));
 					Ok(().into())
@@ -924,21 +977,23 @@
 						for movie_id in ranking_list.movies_in_list {
 							movies_by_power.try_insert(movie_id.clone(), BalanceOf::<T>::from(0u32)).unwrap();
 						}
-	
-						// iterate each user's votes for the ranking list and calculate the return
+
+						
+						// iterate each user's votes in the ranking list and calculate the total return
 						let blocks_in_year: u32 = 5256000; //TODO-4
-						for (account_id, vote_list) in ranking_list.votes_by_user.iter() {
-							
+						for (account_id, user_votes) in ranking_list.votes_by_user.iter() {
+
 							// get each vote's total power, adding it to movies_by_power and tallying the total tokens
 							let mut total_return = BalanceOf::<T>::from(0u32);
-							for vote in vote_list {
-								// increase total voting power for the user's choice
-								let voting_power = Self::do_calculate_voting_power(vote.locked_amount, vote.conviction)?;
+							
+							for (movie_id, vote) in user_votes.iter() {
+								//TODO-7
+								// calculating the voting_power that determines list's order
+								let voting_power = Self::do_calculate_voting_power(vote.locked_amount, Conviction::Locked1x)?;
 								movies_by_power.get_mut(&vote.movie_id).unwrap().checked_add(&voting_power).ok_or(Error::<T>::Overflow)?;
-								// tally the tokens
 								total_return = total_return.checked_add(&vote.locked_amount).ok_or(Error::<T>::Overflow)?;
 							}
-	
+
 							// (total_stake / Blocks_Per_Year) * (APY / 100) = (total_stake * APY) / (Blocks_Per_Year * 100)
 							let new_earning = 
 								total_return
@@ -955,14 +1010,8 @@
 								new_earning, BalanceOf::<T>::from(total_earning_needed),
 								false,
 							).unwrap();
-	
-							// kine_stat_tracker::Pallet::<T>::do_update_wallet_tokens(
-							// 	account_id.clone(), 
-							// 	kine_stat_tracker::FeatureType::RankingList,
-							// 	kine_stat_tracker::TokenType::Claimable,
-							// 	BalanceOf::<T>::from(total_earning_needed), false
-							// )?;
 						}
+							
 	
 						// swap the id for the weight so the elements can be conveniently sorted
 						let mut movies_aux: Vec<(BalanceOf::<T>, BoundedVec<u8, T::LinkStringLimit>)> =
@@ -1025,13 +1074,13 @@
 	
 							Conviction::Locked2x => T::MinimumListDuration::get().saturating_mul(2u32),
 	
-							Conviction::Locked3x => T::MinimumListDuration::get().saturating_mul(3u32),
+							Conviction::Locked3x => T::MinimumListDuration::get().saturating_mul(4u32),
 	
-							Conviction::Locked4x => T::MinimumListDuration::get().saturating_mul(4u32),
+							Conviction::Locked4x => T::MinimumListDuration::get().saturating_mul(8u32),
 	
-							Conviction::Locked5x => T::MinimumListDuration::get().saturating_mul(5u32),
+							Conviction::Locked5x => T::MinimumListDuration::get().saturating_mul(16u32),
 	
-							Conviction::Locked6x => T::MinimumListDuration::get().saturating_mul(6u32),
+							Conviction::Locked6x => T::MinimumListDuration::get().saturating_mul(32u32),
 						};
 
 						unlock_block = 

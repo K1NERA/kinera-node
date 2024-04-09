@@ -205,7 +205,7 @@ fn testnet_genesis(
 			BoundedVec<u8, TagStringLimit>,
 		), MaxTags>,
 	) = (
-		"Best Crypto Youbers".as_bytes().to_vec().try_into().unwrap(),
+		"Best Crypto Advocates and Educators".as_bytes().to_vec().try_into().unwrap(),
 		"The best content regarding Web3 and Crypto.".as_bytes().to_vec().try_into().unwrap(),
 		4800u64.into(),
 		TryInto::try_into(vec![(
@@ -233,6 +233,346 @@ fn testnet_genesis(
 	);
 
 
+  let crypto_advocates: (
+		BoundedVec<u8, RankingStringLimit>,
+		BoundedVec<u8, RankingStringLimit>,
+		u64,
+		BoundedVec<(
+			BoundedVec<u8, CategoryStringLimit>,
+			BoundedVec<u8, TagStringLimit>,
+		), MaxTags>,
+	) = (
+		"Best Crypto Advocates and Educators".as_bytes().to_vec().try_into().unwrap(),
+		"Content creators who inspire users while explaining the principals of the technology.".as_bytes().to_vec().try_into().unwrap(),
+		4800u64.into(),
+		TryInto::try_into(vec![(
+			"Just FUN".as_bytes().to_vec().try_into().unwrap(),
+			"Just FUN Others".as_bytes().to_vec().try_into().unwrap(),
+		)]).unwrap(),
+	);
+
+  let crypto_advocates: (
+		BoundedVec<u8, RankingStringLimit>,
+		BoundedVec<u8, RankingStringLimit>,
+		u64,
+		BoundedVec<(
+			BoundedVec<u8, CategoryStringLimit>,
+			BoundedVec<u8, TagStringLimit>,
+		), MaxTags>,
+	) = (
+		"Best Crypto Podcasts".as_bytes().to_vec().try_into().unwrap(),
+		"Generalist crypto podcasts featuring the best scientists, thinkers, projects and ideas.".as_bytes().to_vec().try_into().unwrap(),
+		4800u64.into(),
+		TryInto::try_into(vec![(
+			"Just FUN".as_bytes().to_vec().try_into().unwrap(),
+			"Just FUN Others".as_bytes().to_vec().try_into().unwrap(),
+		)]).unwrap(),
+	);
+
+  let blockchain_artificial: (
+		BoundedVec<u8, RankingStringLimit>,
+		BoundedVec<u8, RankingStringLimit>,
+		u64,
+		BoundedVec<(
+			BoundedVec<u8, CategoryStringLimit>,
+			BoundedVec<u8, TagStringLimit>,
+		), MaxTags>,
+	) = (
+		"Blockchain and Artificial Intelligence Scientists and Educators".as_bytes().to_vec().try_into().unwrap(),
+		"The intersection between Decentralised Artificial Intelligence and Blockchain is in its infancy.".as_bytes().to_vec().try_into().unwrap(),
+		4800u64.into(),
+		TryInto::try_into(vec![(
+			"Just FUN".as_bytes().to_vec().try_into().unwrap(),
+			"Just FUN Others".as_bytes().to_vec().try_into().unwrap(),
+		)]).unwrap(),
+	);
+
+  let crypto_economic_analysts: (
+		BoundedVec<u8, RankingStringLimit>,
+		BoundedVec<u8, RankingStringLimit>,
+		u64,
+		BoundedVec<(
+			BoundedVec<u8, CategoryStringLimit>,
+			BoundedVec<u8, TagStringLimit>,
+		), MaxTags>,
+	) = (
+		"Best Crypto Economic Analysts".as_bytes().to_vec().try_into().unwrap(),
+		"The place for market analysts, covering market analysis and market trends.".as_bytes().to_vec().try_into().unwrap(),
+		4800u64.into(),
+		TryInto::try_into(vec![(
+			"Just FUN".as_bytes().to_vec().try_into().unwrap(),
+			"Just FUN Others".as_bytes().to_vec().try_into().unwrap(),
+		)]).unwrap(),
+	);
+
+  let blockchain_artificial: (
+		BoundedVec<u8, RankingStringLimit>,
+		BoundedVec<u8, RankingStringLimit>,
+		u64,
+		BoundedVec<(
+			BoundedVec<u8, CategoryStringLimit>,
+			BoundedVec<u8, TagStringLimit>,
+		), MaxTags>,
+	) = (
+		"Blockchain and Artificial Intelligence Scientists and Educators".as_bytes().to_vec().try_into().unwrap(),
+		"The intersection between Decentralised Artificial Intelligence and Blockchain is in its infancy.".as_bytes().to_vec().try_into().unwrap(),
+		4800u64.into(),
+		TryInto::try_into(vec![(
+			"Just FUN".as_bytes().to_vec().try_into().unwrap(),
+			"Just FUN Others".as_bytes().to_vec().try_into().unwrap(),
+		)]).unwrap(),
+	);
+
+  let institutional_content: (
+		BoundedVec<u8, RankingStringLimit>,
+		BoundedVec<u8, RankingStringLimit>,
+		u64,
+		BoundedVec<(
+			BoundedVec<u8, CategoryStringLimit>,
+			BoundedVec<u8, TagStringLimit>,
+		), MaxTags>,
+	) = (
+		"Best Institutional Content".as_bytes().to_vec().try_into().unwrap(),
+		"Some of the best discussions are organised by investment companies, foundations or companies connected to projects. Here we list and rank the institutional content. " 
+    .as_bytes().to_vec().try_into().unwrap(),
+		4800u64.into(),
+		TryInto::try_into(vec![(
+			"Just FUN".as_bytes().to_vec().try_into().unwrap(),
+			"Just FUN Others".as_bytes().to_vec().try_into().unwrap(),
+		)]).unwrap(),
+	);
+
+  let degen_tubers: (
+		BoundedVec<u8, RankingStringLimit>,
+		BoundedVec<u8, RankingStringLimit>,
+		u64,
+		BoundedVec<(
+			BoundedVec<u8, CategoryStringLimit>,
+			BoundedVec<u8, TagStringLimit>,
+		), MaxTags>,
+	) = (
+		"Degen Tubers".as_bytes().to_vec().try_into().unwrap(),
+		"Tubers, analysts and traders who frequently engage in highly speculative and risky activities. Only out of the box ideas, please." 
+    .as_bytes().to_vec().try_into().unwrap(),
+		4800u64.into(),
+		TryInto::try_into(vec![(
+			"Just FUN".as_bytes().to_vec().try_into().unwrap(),
+			"Just FUN Others".as_bytes().to_vec().try_into().unwrap(),
+		)]).unwrap(),
+	);
+
+  let best_padcasters: (
+		BoundedVec<u8, RankingStringLimit>,
+		BoundedVec<u8, RankingStringLimit>,
+		u64,
+		BoundedVec<(
+			BoundedVec<u8, CategoryStringLimit>,
+			BoundedVec<u8, TagStringLimit>,
+		), MaxTags>,
+	) = (
+		"Best Podcasters".as_bytes().to_vec().try_into().unwrap(),
+		"Content creators that challenge the limits of knowledge, exploring new ideas and perspectives." 
+    .as_bytes().to_vec().try_into().unwrap(),
+		4800u64.into(),
+		TryInto::try_into(vec![(
+			"Just FUN".as_bytes().to_vec().try_into().unwrap(),
+			"Just FUN Others".as_bytes().to_vec().try_into().unwrap(),
+		)]).unwrap(),
+	);
+
+
+  let best_stand_up_comedian_channels: (
+    BoundedVec<u8, RankingStringLimit>,
+    BoundedVec<u8, RankingStringLimit>,
+    u64,
+    BoundedVec<(
+        BoundedVec<u8, CategoryStringLimit>,
+        BoundedVec<u8, TagStringLimit>,
+    ), MaxTags>,
+  ) = (
+    "Best Stand-Up Comedian Channels".as_bytes().to_vec().try_into().unwrap(),
+    "The comedians with the best channels."
+    .as_bytes().to_vec().try_into().unwrap(),
+    4800u64.into(),
+    TryInto::try_into(vec![(
+        "Just FUN".as_bytes().to_vec().try_into().unwrap(),
+        "Just FUN Others".as_bytes().to_vec().try_into().unwrap(),
+    )]).unwrap(),
+  );
+
+  let comedy_best_single_videos_online: (
+    BoundedVec<u8, RankingStringLimit>,
+    BoundedVec<u8, RankingStringLimit>,
+    u64,
+    BoundedVec<(
+        BoundedVec<u8, CategoryStringLimit>,
+        BoundedVec<u8, TagStringLimit>,
+    ), MaxTags>,
+  ) = (
+    "Comedy Best Single Videos Online".as_bytes().to_vec().try_into().unwrap(),
+    "Comedy sketches, spoofs and hidden camera shorts."
+    .as_bytes().to_vec().try_into().unwrap(),
+    4800u64.into(),
+    TryInto::try_into(vec![(
+        "Just FUN".as_bytes().to_vec().try_into().unwrap(),
+        "Just FUN Others".as_bytes().to_vec().try_into().unwrap(),
+    )]).unwrap(),
+  );
+
+
+  let best_video_memes: (
+    BoundedVec<u8, RankingStringLimit>,
+    BoundedVec<u8, RankingStringLimit>,
+    u64,
+    BoundedVec<(
+        BoundedVec<u8, CategoryStringLimit>,
+        BoundedVec<u8, TagStringLimit>,
+    ), MaxTags>,
+  ) = (
+    "Best Video Memes".as_bytes().to_vec().try_into().unwrap(),
+    "All video memes in one place."
+    .as_bytes().to_vec().try_into().unwrap(),
+    4800u64.into(),
+    TryInto::try_into(vec![(
+        "Just FUN".as_bytes().to_vec().try_into().unwrap(),
+        "Just FUN Others".as_bytes().to_vec().try_into().unwrap(),
+    )]).unwrap(),
+  );
+
+
+  let funny_with_animals: (
+    BoundedVec<u8, RankingStringLimit>,
+    BoundedVec<u8, RankingStringLimit>,
+    u64,
+    BoundedVec<(
+        BoundedVec<u8, CategoryStringLimit>,
+        BoundedVec<u8, TagStringLimit>,
+    ), MaxTags>,
+  ) = (
+    "Funny Videos with Animals".as_bytes().to_vec().try_into().unwrap(),
+    "Funny Videos with Animals"
+    .as_bytes().to_vec().try_into().unwrap(),
+    4800u64.into(),
+    TryInto::try_into(vec![(
+        "Just FUN".as_bytes().to_vec().try_into().unwrap(),
+        "Just FUN Others".as_bytes().to_vec().try_into().unwrap(),
+    )]).unwrap(),
+  );
+
+
+  let all_time_best_films: (
+    BoundedVec<u8, RankingStringLimit>,
+    BoundedVec<u8, RankingStringLimit>,
+    u64,
+    BoundedVec<(
+        BoundedVec<u8, CategoryStringLimit>,
+        BoundedVec<u8, TagStringLimit>,
+    ), MaxTags>,
+  ) = (
+      "All Time Best Films".as_bytes().to_vec().try_into().unwrap(),
+      "Historical landmarks and life-changing fiction and documentaries."
+      .as_bytes().to_vec().try_into().unwrap(),
+      4800u64.into(),
+      TryInto::try_into(vec![(
+          "Cinema".as_bytes().to_vec().try_into().unwrap(),
+          "All Genres".as_bytes().to_vec().try_into().unwrap(),
+      )]).unwrap(),
+  );
+
+
+  let all_time_best_asiatic_fiction: (
+    BoundedVec<u8, RankingStringLimit>,
+    BoundedVec<u8, RankingStringLimit>,
+    u64,
+    BoundedVec<(
+        BoundedVec<u8, CategoryStringLimit>,
+        BoundedVec<u8, TagStringLimit>,
+    ), MaxTags>,
+  ) = (
+      "All Time Best Asiatic Fiction".as_bytes().to_vec().try_into().unwrap(),
+      "Cinema from India, China, Pakistan, Thailand, Taiwan, South Korea, Japan, Iran, etc."
+      .as_bytes().to_vec().try_into().unwrap(),
+      4800u64.into(),
+      TryInto::try_into(vec![(
+          "Cinema".as_bytes().to_vec().try_into().unwrap(),
+          "Asiatic Fiction".as_bytes().to_vec().try_into().unwrap(),
+      )]).unwrap(),
+  );
+
+  let the_best_from_south_america: (
+    BoundedVec<u8, RankingStringLimit>,
+    BoundedVec<u8, RankingStringLimit>,
+    u64,
+    BoundedVec<(
+        BoundedVec<u8, CategoryStringLimit>,
+        BoundedVec<u8, TagStringLimit>,
+    ), MaxTags>,
+  ) = (
+      "The Best From South America".as_bytes().to_vec().try_into().unwrap(),
+      "Documentary and fiction."
+      .as_bytes().to_vec().try_into().unwrap(),
+      4800u64.into(),
+      TryInto::try_into(vec![(
+          "Cinema".as_bytes().to_vec().try_into().unwrap(),
+          "South American".as_bytes().to_vec().try_into().unwrap(),
+      )]).unwrap(),
+  );
+
+  let life_changing_documentary_films_online: (
+    BoundedVec<u8, RankingStringLimit>,
+    BoundedVec<u8, RankingStringLimit>,
+    u64,
+    BoundedVec<(
+        BoundedVec<u8, CategoryStringLimit>,
+        BoundedVec<u8, TagStringLimit>,
+    ), MaxTags>,
+  ) = (
+      "Life-changing Documentary Films Online".as_bytes().to_vec().try_into().unwrap(),
+      "Full-length documentaries online."
+      .as_bytes().to_vec().try_into().unwrap(),
+      4800u64.into(),
+      TryInto::try_into(vec![(
+          "Cinema".as_bytes().to_vec().try_into().unwrap(),
+          "Documentaries".as_bytes().to_vec().try_into().unwrap(),
+      )]).unwrap(),
+  );
+
+  let best_shorts_all_genre_world_wide: (
+		BoundedVec<u8, RankingStringLimit>,
+		BoundedVec<u8, RankingStringLimit>,
+		u64,
+		BoundedVec<(
+			BoundedVec<u8, CategoryStringLimit>,
+			BoundedVec<u8, TagStringLimit>,
+		), MaxTags>,
+	) = (
+		"Best Shorts, All Genre, World Wide".as_bytes().to_vec().try_into().unwrap(),
+		"Small films are beautiful.".as_bytes().to_vec().try_into().unwrap(),
+		4800u64.into(),
+		TryInto::try_into(vec![(
+			"Just FUN".as_bytes().to_vec().try_into().unwrap(),
+			"Just FUN Others".as_bytes().to_vec().try_into().unwrap(),
+		)]).unwrap(),
+	);
+	
+  let best_comic_kids: (
+		BoundedVec<u8, RankingStringLimit>,
+		BoundedVec<u8, RankingStringLimit>,
+		u64,
+		BoundedVec<(
+			BoundedVec<u8, CategoryStringLimit>,
+			BoundedVec<u8, TagStringLimit>,
+		), MaxTags>,
+	) = (
+		"Best Comic Kids Videos".as_bytes().to_vec().try_into().unwrap(),
+		"Best of Funny Kids Videos from around the world.".as_bytes().to_vec().try_into().unwrap(),
+		4800u64.into(),
+		TryInto::try_into(vec![(
+			"Just FUN".as_bytes().to_vec().try_into().unwrap(),
+			"Just FUN Others".as_bytes().to_vec().try_into().unwrap(),
+		)]).unwrap(),
+	);
+	
 
 	// initialize the vec with the pre-built tuples
 	let initial_ranking_lists = vec![
@@ -241,7 +581,22 @@ fn testnet_genesis(
 		rl_best_asian_fiction,
 		rl_best_crypto,
 		rl_documentaries_and_fiction,
-   
+    crypto_advocates,
+    blockchain_artificial,
+    crypto_economic_analysts,
+    institutional_content,
+    degen_tubers,
+    best_padcasters,
+    best_stand_up_comedian_channels,
+    comedy_best_single_videos_online,
+    best_video_memes,
+    funny_with_animals,
+    all_time_best_films,
+    all_time_best_asiatic_fiction,
+    the_best_from_south_america,
+    life_changing_documentary_films_online,
+    best_shorts_all_genre_world_wide,
+    best_comic_kids
 	];
 	
 

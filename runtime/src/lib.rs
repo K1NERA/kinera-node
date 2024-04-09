@@ -334,7 +334,7 @@ parameter_types! {
 	pub const MinFesBlockDuration: u32 = 1; // prev 3600
 	pub const FestBlockSafetyMargin: u32 = 1; // prev 10
 	pub const MaxFestivalsPerBlock: u32 = 500;
-	pub const MaxVotes: u32 = 100000;
+	pub const MaxVotes: u32 = 2000;
 	pub const PalletFestivalId: PalletId = PalletId(*b"FesStash");
 }
 
@@ -362,7 +362,7 @@ impl kine_stat_tracker::Config for Runtime {
  	type RuntimeEvent = RuntimeEvent;
 	type Currency = Balances;
 	type DefaultReputation = DefaultReputation;
-	type NameStringLimit = WalletNameStringLimit;
+	type NameStringLimit = CategoryStringLimit;
 	type PalletId = PalletStatTrackerId;
 }
 
@@ -389,7 +389,7 @@ impl kine_tags::Config for Runtime {
 // Ranking List
 parameter_types!{
     pub const PalletRankingListId : PalletId = PalletId(*b"kine/rnk");
-	pub const RankingStringLimit: u32 = 50;
+	pub const RankingStringLimit: u32 = 500;
 	pub const MaxMoviesInList: u32 = 100000;
 	pub const MinimumListDuration: u32 = 3600; // six hours in blocks
 	pub const MaxVotersPerList: u32 = 10000000;
