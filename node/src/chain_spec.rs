@@ -361,7 +361,7 @@ fn testnet_genesis(
 		)]).unwrap(),
 	);
 
-  let best_padcasters: (
+  let bet_ai_author: (
 		BoundedVec<u8, RankingStringLimit>,
 		BoundedVec<u8, RankingStringLimit>,
 		u64,
@@ -370,8 +370,8 @@ fn testnet_genesis(
 			BoundedVec<u8, TagStringLimit>,
 		), MaxTags>,
 	) = (
-		"Best Podcasters".as_bytes().to_vec().try_into().unwrap(),
-		"Content creators that challenge the limits of knowledge, exploring new ideas and perspectives." 
+		"Best AI Authors".as_bytes().to_vec().try_into().unwrap(),
+		"Let's start ranking creators, directors, auteurs and AI film experimentalists on YouTube." 
     .as_bytes().to_vec().try_into().unwrap(),
 		4800u64.into(),
 		TryInto::try_into(vec![(
@@ -380,6 +380,81 @@ fn testnet_genesis(
 		)]).unwrap(),
 	);
 
+  let social_media: (
+		BoundedVec<u8, RankingStringLimit>,
+		BoundedVec<u8, RankingStringLimit>,
+		u64,
+		BoundedVec<(
+			BoundedVec<u8, CategoryStringLimit>,
+			BoundedVec<u8, TagStringLimit>,
+		), MaxTags>,
+	) = (
+		"Social Media Content, Advertising and Marketing".as_bytes().to_vec().try_into().unwrap(),
+		"AI-generated videos for self- or institutional promotion, serious or humorous." 
+    .as_bytes().to_vec().try_into().unwrap(),
+		4800u64.into(),
+		TryInto::try_into(vec![(
+			"Just FUN".as_bytes().to_vec().try_into().unwrap(),
+			"Just FUN Others".as_bytes().to_vec().try_into().unwrap(),
+		)]).unwrap(),
+	);
+
+  let deep_fake: (
+		BoundedVec<u8, RankingStringLimit>,
+		BoundedVec<u8, RankingStringLimit>,
+		u64,
+		BoundedVec<(
+			BoundedVec<u8, CategoryStringLimit>,
+			BoundedVec<u8, TagStringLimit>,
+		), MaxTags>,
+	) = (
+		"Deepfakes".as_bytes().to_vec().try_into().unwrap(),
+		"Films that use AI and machine learning technologies to create highly realistic and convincing videos that make it appear as though people are saying or doing things they did not actually say or do." 
+    .as_bytes().to_vec().try_into().unwrap(),
+		4800u64.into(),
+		TryInto::try_into(vec![(
+			"Just FUN".as_bytes().to_vec().try_into().unwrap(),
+			"Just FUN Others".as_bytes().to_vec().try_into().unwrap(),
+		)]).unwrap(),
+	);
+
+  let experimental_and_art_films: (
+		BoundedVec<u8, RankingStringLimit>,
+		BoundedVec<u8, RankingStringLimit>,
+		u64,
+		BoundedVec<(
+			BoundedVec<u8, CategoryStringLimit>,
+			BoundedVec<u8, TagStringLimit>,
+		), MaxTags>,
+	) = (
+		"Experimental Experimental and Art Films".as_bytes().to_vec().try_into().unwrap(),
+		"Videos where creators move beyond dream and reality." 
+    .as_bytes().to_vec().try_into().unwrap(),
+		4800u64.into(),
+		TryInto::try_into(vec![(
+			"Just FUN".as_bytes().to_vec().try_into().unwrap(),
+			"Just FUN Others".as_bytes().to_vec().try_into().unwrap(),
+		)]).unwrap(),
+	);
+
+  let podcasts_all_tools: (
+		BoundedVec<u8, RankingStringLimit>,
+		BoundedVec<u8, RankingStringLimit>,
+		u64,
+		BoundedVec<(
+			BoundedVec<u8, CategoryStringLimit>,
+			BoundedVec<u8, TagStringLimit>,
+		), MaxTags>,
+	) = (
+		"AI Tools for Audio and Video Production".as_bytes().to_vec().try_into().unwrap(),
+		"The top videos showcasing AI production tools for content creation." 
+    .as_bytes().to_vec().try_into().unwrap(),
+		4800u64.into(),
+		TryInto::try_into(vec![(
+			"Just FUN".as_bytes().to_vec().try_into().unwrap(),
+			"Just FUN Others".as_bytes().to_vec().try_into().unwrap(),
+		)]).unwrap(),
+	);
 
   let best_stand_up_comedian_channels: (
     BoundedVec<u8, RankingStringLimit>,
@@ -586,7 +661,6 @@ fn testnet_genesis(
     crypto_economic_analysts,
     institutional_content,
     degen_tubers,
-    best_padcasters,
     best_stand_up_comedian_channels,
     comedy_best_single_videos_online,
     best_video_memes,
@@ -596,7 +670,12 @@ fn testnet_genesis(
     the_best_from_south_america,
     life_changing_documentary_films_online,
     best_shorts_all_genre_world_wide,
-    best_comic_kids
+    best_comic_kids,
+    bet_ai_author,
+    social_media,
+    deep_fake,
+    experimental_and_art_films,
+    podcasts_all_tools
 	];
 	
 

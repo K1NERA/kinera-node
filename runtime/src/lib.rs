@@ -340,6 +340,7 @@ parameter_types! {
 
 impl kine_festival::Config for Runtime{
     type RuntimeEvent = RuntimeEvent;
+  type DescStringLimit = DescStringLimit;
 	type FestivalId = u32;
 	type MaxMoviesInFest = MaxMoviesInFest;
 	type MaxOwnedFestivals = MaxOwnedFestivals;
@@ -348,6 +349,7 @@ impl kine_festival::Config for Runtime{
 	type MaxVotes = MaxVotes;
 	type FestBlockSafetyMargin = FestBlockSafetyMargin;
 	type PalletId = PalletFestivalId;
+
 }
 
 

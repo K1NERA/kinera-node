@@ -97,7 +97,7 @@
                     type MinFesBlockDuration: Get<u32>;
                     type MaxFestivalsPerBlock: Get<u32>;
                     type MaxVotes: Get<u32>;
-                    
+                    type DescStringLimit: Get<u32>;
                     type FestBlockSafetyMargin: Get<u32>;
     
                     type PalletId: Get<PalletId>;
@@ -107,10 +107,8 @@
           
     
         //** Types **//	
-        
-            //* Types *//
-                
-                type BalanceOf<T> = <<T as kine_stat_tracker::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+
+              type BalanceOf<T> = <<T as kine_stat_tracker::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
     
             //* Constants *//
             //* Enums *//
@@ -203,7 +201,7 @@
                             T::FestivalId, 
                             T::AccountId,
                             BoundedVec<u8, T::NameStringLimit>, //BoundedNameString
-                            BoundedVec<u8, T::NameStringLimit>, //TODO-5
+                            BoundedVec<u8, T::DescStringLimit>, //TODO-5
                             FestivalStatus,
                             BalanceOf<T>, //BalanceOf
                             BoundedBTreeMap<
@@ -265,6 +263,7 @@
                 FestivalHasEndedUnsuccessfully(T::FestivalId),
                 FestivalActivated(T::FestivalId, T::AccountId),
                 FestivalTokensClaimed(T::AccountId, BalanceOf<T>),
+                FestivalDetailsUpdated(T::FestivalId, T::AccountId, Vec<u8>, Vec<u8>),
             }
     
     
@@ -306,10 +305,6 @@
                 NoClaimableTokens,
             }
     
-    
-    
-    
-    
         //** Hooks **//
     
             #[pallet::hooks]
@@ -332,76 +327,6 @@
             #[pallet::call]
             impl<T: Config> Pallet<T> {
     
-                // Create a new public festival.
-                // #[pallet::call_index(n)]#[pallet::weight(Weight::from_parts(10_000, 0) + T::DbWeight::get().reads_writes(1,1))]
-                // pub fn create_public_festival(
-                //     origin: OriginFor<T>,
-                //     bounded_name: BoundedVec<u8, T::NameStringLimit>,
-                //     bounded_description: BoundedVec<u8, T::NameStringLimit>,
-                //     max_entry: BalanceOf<T>,
-                //     start_block: T::BlockNumber,
-                //     end_block: T::BlockNumber,
-                //     category_tag_list: BoundedVec<(CategoryId<T>, TagId<T>), T::MaxTags>,
-                // ) -> DispatchResult {
-                    
-                //     let who = ensure_signed(origin)?;
-                // 	// ensure!(
-                // 	// 	kine_stat_tracker::Pallet::<T>::is_wallet_registered(who.clone())?,
-                // 	// 	Error::<T>::WalletStatsRegistryRequired,
-                // 	// );
-                    
-                //     // validate category and tag
-                //     let category_type: kine_tags::CategoryType<T>
-                //         = TryInto::try_into("Festival".as_bytes().to_vec())
-                //         .map_err(|_|Error::<T>::BadMetadata)?;
-                //     kine_tags::Pallet::<T>::do_validate_tag_data(
-                //         category_type.clone(), 
-                //         category_tag_list.clone()
-                //     )?;
-    
-                //     // ensure the block periods are valid
-                //     let safe_start_time = start_block
-                //         .checked_sub(&T::BlockNumber::from(T::FestBlockSafetyMargin::get()))
-                //         .ok_or(Error::<T>::InvalidBlockPeriod)?;
-                //     ensure!(
-                //         frame_system::Pallet::<T>::block_number() < safe_start_time, 
-                //         Error::<T>::PastStartDate
-                //     );
-                //     ensure!(
-                //         end_block-safe_start_time >= T::BlockNumber::from(T::FestBlockSafetyMargin::get()), 
-                //         Error::<T>::FestivalPeriodTooShort
-                //     );
-    
-                //     // create the festival & bind the owner & validated blocks to it
-                //     let festival_id = Self::do_create_festival(
-                //         who.clone(),
-                //         bounded_name, bounded_description, max_entry,
-                //         category_tag_list.clone(), FestivalStatus::New
-                //     )?;
-                //     Self::do_bind_owners_to_festival(who.clone(), festival_id)?;
-                //     Self::do_bind_duration_to_festival(festival_id, start_block, end_block)?;
-    
-                //     // parse the festival_id into a BoundedVec<u8, T::ContentStringLimit>
-                //     let encoded: Vec<u8> = festival_id.encode();
-                //     let bounded_content_id: BoundedVec<u8, T::ContentStringLimit> = 
-                //         TryInto::try_into(encoded).map_err(|_|Error::<T>::BadMetadata)?;
-    
-                //     // update tags with the encoded bounded_content_id
-                //     kine_tags::Pallet::<T>::do_update_tag_data(
-                //         category_type, 
-                //         category_tag_list,
-                //         bounded_content_id,
-                //     )?;
-    
-                //     Self::deposit_event(Event::FestivalCreated(who.clone(), festival_id));
-                //     Ok(())
-                // }
-    
-    
-    
-                // Create a new private festival. It needs to be manually activated by the
-                // owner when desired. Therefore, it does not have any block parameters, and
-                // the festival is not bound to any blocks until the festival is activated.
                 #[pallet::call_index(0)]#[pallet::weight(Weight::from_parts(10_000, 0) + T::DbWeight::get().reads_writes(1,1))]
                 pub fn create_festival(
                     origin: OriginFor<T>,
@@ -532,9 +457,7 @@
     
                     Ok(().into())
                 }
-    
-    
-    
+  
     
                 // Activate a festival with status "AwaitingActivation" if you are its owner. Festivals
                 // are considered private before their activation. After activating ASAP, the festival starts right away,
@@ -619,7 +542,6 @@
                 }
                 
                 
-    
                 // Add a list of internal movies and a list of external movies to the festival.
                 // Duplicate movies are filtered and only unique movies are inserted. 
                 // Only works if the festival has not begun (i.e. its status is "New").           
@@ -776,16 +698,43 @@
                         who.clone(), 
                         kine_stat_tracker::FeatureType::Festival,
                         kine_stat_tracker::TokenType::Claimable,
-                        BalanceOf::<T>::from(0u32), true
+                        claimable_tokens_festival.clone(), true
                     )?;
                 
                     Self::deposit_event(Event::FestivalTokensClaimed(who, claimable_tokens_festival));
                     Ok(().into())
                 }	
+
+                #[pallet::call_index(7)]#[pallet::weight(Weight::from_parts(10_000, 0) + T::DbWeight::get().reads_writes(1,1))]
+                pub fn edit_festival_details(
+                    origin: OriginFor<T>,
+                    festival_id: T::FestivalId,
+                    new_name_str: String,
+                    new_description_str: String,
+                ) -> DispatchResultWithPostInfo {
+                    let who = ensure_signed(origin)?;
+                    Festivals::<T>::try_mutate_exists(festival_id, |festival_option| -> DispatchResult {
+                        let festival = festival_option.as_mut().ok_or(Error::<T>::NonexistentFestival)?;
+                        ensure!(
+                            festival.owner == who,
+                            Error::<T>::NoFestivalAdminAccess
+                        );
+                        let new_name: BoundedVec<u8, T::NameStringLimit> =
+                            TryInto::try_into(new_name_str.as_bytes().to_vec()).map_err(|_| Error::<T>::BadMetadata)?;
+                        let new_description: BoundedVec<u8, T::DescStringLimit> =
+                            TryInto::try_into(new_description_str.as_bytes().to_vec()).map_err(|_| Error::<T>::BadMetadata)?;
+                        festival.name = new_name.clone();
+                        festival.description = new_description.clone();
                 
+                        Self::deposit_event(Event::FestivalDetailsUpdated(festival_id, who, new_name.to_vec(), new_description.to_vec()));
+                
+                        Ok(().into())
+                    })?;
+                
+                    Ok(().into())
+                }
     
             }
-    
     
             
         //** Helpers **//
@@ -818,7 +767,7 @@
                         let name: BoundedVec<u8, T::NameStringLimit>
                             = TryInto::try_into(name_str.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?;
                 
-                        let description: BoundedVec<u8, T::NameStringLimit>
+                        let description: BoundedVec<u8, T::DescStringLimit>
                             = TryInto::try_into(description_str.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?;
 
                         let bounded_film_list: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>
@@ -1317,12 +1266,12 @@
                         let festival_winners = Self::do_get_winning_options(festival_id).unwrap();
                         // Self::do_assign_wins_to_uploaders(festival_id, festival_winners).unwrap();
                         
-                        let total_lockup = Self::do_calculate_owner_reward(festival.owner.clone(), festival.total_lockup).unwrap();
+                        let total_lockup_after_owner = Self::do_calculate_owner_reward(festival.owner.clone(), festival.total_lockup).unwrap();
                         
                         // get the winning voter's lockup and each of their respective winning vote lockup and the total winning votes
                         let (winning_voters_lockup, winning_vote_map) = Self::do_get_winners_total_lockup(festival_id, festival_winners.clone()).unwrap();
                         
-                        Self::do_calculate_voters_reward(total_lockup, winning_voters_lockup, winning_vote_map.clone()).unwrap();
+                        Self::do_calculate_voters_reward(total_lockup_after_owner, winning_voters_lockup, winning_vote_map.clone()).unwrap();
 
                         Ok((winning_vote_map.into_keys().collect(), festival_winners.clone()))
                     })?;
@@ -1520,15 +1469,6 @@
 
                     Ok(().into())
                 }
-    
-    
-
-
-    
-    
-    
-            
-
 
                 fn do_calculate_voters_reward(
                     total_lockup: BalanceOf<T>,
@@ -1601,9 +1541,6 @@
                     Ok(().into())
                 }
     
-    
-
-
 
                 // Returns the remainder of the prize pool, after the owner's share.
                 fn do_calculate_owner_reward(
@@ -1631,11 +1568,6 @@
                     Ok(remaining_lockup)
                 }
     
-    
-
-
-
-
                 fn do_create_new_wallet_data(
                 ) -> Result<WalletData<BoundedVec<T::FestivalId, T::MaxOwnedFestivals>>, DispatchError> {
 
@@ -1659,8 +1591,7 @@
                 }
     
     
-    
-    
+
             }
             
     }
