@@ -17,6 +17,9 @@
     // *stat += amount;
     //TODO-13 filter duplicates inside the parameter list
     //TODO-14 remove the try_mutate_exists, no longer needed
+    //TODO-15 merge "add_movies_to_fest" and "edit_festival_details" into a single extrinsic
+    //TODO-16 upgrade the division to perbill
+    //TODO-17 remove locked_tokens from festival loser's votes
     
 
 
@@ -58,7 +61,16 @@
                 };
                 use frame_system::pallet_prelude::*;
                 use codec::{Decode, Encode, MaxEncodedLen};
-                use sp_runtime::{RuntimeDebug, traits::{AccountIdConversion, AtLeast32BitUnsigned, CheckedAdd, CheckedSub, CheckedDiv, Saturating, One}};
+                use sp_runtime::{
+                    RuntimeDebug, 
+                    traits::{
+                        AccountIdConversion, 
+                        AtLeast32BitUnsigned, 
+                        CheckedAdd, CheckedSub, CheckedDiv, 
+                        Saturating, One
+                    },
+                    Perbill,
+                };
                 use scale_info::{
                     TypeInfo,
                     prelude::{
@@ -1266,12 +1278,14 @@
                         let festival_winners = Self::do_get_winning_options(festival_id).unwrap();
                         // Self::do_assign_wins_to_uploaders(festival_id, festival_winners).unwrap();
                         
-                        let total_lockup_after_owner = Self::do_calculate_owner_reward(festival.owner.clone(), festival.total_lockup).unwrap();
+                        let (owner_reward, total_lockup_after_owner) = Self::do_calculate_owner_reward(festival.owner.clone(), festival.total_lockup).unwrap();
                         
                         // get the winning voter's lockup and each of their respective winning vote lockup and the total winning votes
                         let (winning_voters_lockup, winning_vote_map) = Self::do_get_winners_total_lockup(festival_id, festival_winners.clone()).unwrap();
                         
-                        Self::do_calculate_voters_reward(total_lockup_after_owner, winning_voters_lockup, winning_vote_map.clone()).unwrap();
+                        let remaining_lockup = Self::do_calculate_voters_reward(total_lockup_after_owner, winning_voters_lockup, winning_vote_map.clone()).unwrap();
+
+                        Self::do_handle_owner_reward( festival.owner.clone(), owner_reward, remaining_lockup).unwrap();
 
                         Ok((winning_vote_map.into_keys().collect(), festival_winners.clone()))
                     })?;
@@ -1474,99 +1488,83 @@
                     total_lockup: BalanceOf<T>,
                     winners_lockup: BalanceOf<T>,
                     winning_vote_map: BTreeMap<T::AccountId, (BalanceOf<T>, u32)>,
-                ) -> DispatchResultWithPostInfo {
+                ) -> Result<BalanceOf<T>, DispatchError> {
 
-                    let mut user_share: BalanceOf<T>;
+                    let mut user_share: Perbill;
                     let mut user_reward: BalanceOf<T>;
+                    let mut remaining_lockup = total_lockup;
 
-                    for (voter, (user_winning_votes_lockup, user_total_winning_votes)) in winning_vote_map {
-                        let thousand_balance = BalanceOf::<T>::from(10000u32);
+                    for (voter, (user_winning_votes_lockup, _)) in winning_vote_map {
 
-                        // user_share = BalanceOf::<T>::from(0u32);
-                        user_share = 
-                            winners_lockup
-                            .saturating_mul(thousand_balance)
-                            .checked_div(&user_winning_votes_lockup)
-                            .ok_or(Error::<T>::Underflow)?;
-                        
-                        // user_reward = BalanceOf::<T>::from(0u32);
+                        user_share = Perbill::from_rational(user_winning_votes_lockup, winners_lockup);
+
                         user_reward = 
-                            total_lockup
-                            .checked_div(&user_share)
-                            .ok_or(Error::<T>::Underflow)?
-                            .checked_div(&thousand_balance)
+                            user_share
+                            .mul_floor(total_lockup);
+
+                        remaining_lockup =
+                            remaining_lockup
+                            .checked_sub(&user_reward)
                             .ok_or(Error::<T>::Underflow)?;
-
-                        // // update the claimable tokens
-                        // kine_stat_tracker::Pallet::<T>::do_update_wallet_tokens(
-                        //     voter.clone(), 
-                        //     kine_stat_tracker::FeatureType::RankingList,
-                        //     kine_stat_tracker::TokenType::Claimable,
-                        //     user_winning_votes_lockup, false,
-                        // ).unwrap();
-
-                        // // update the claimable tokens
-                        // kine_stat_tracker::Pallet::<T>::do_update_wallet_tokens(
-                        //     voter.clone(), 
-                        //     kine_stat_tracker::FeatureType::RankingList,
-                        //     kine_stat_tracker::TokenType::Locked,
-                        //     winners_lockup, false,
-                        // ).unwrap();
 
                         // update the claimable tokens
                         kine_stat_tracker::Pallet::<T>::do_update_wallet_tokens(
                             voter.clone(), 
                             kine_stat_tracker::FeatureType::Festival,
                             kine_stat_tracker::TokenType::Claimable,
-                            user_share, false,
+                            user_reward, false,
                         ).unwrap();
-
-
-                        // winners_lockup = 2000
-                        // user_winning_votes_lockup = 1000
-                        // user_share = 2
-
-
-
-                        // // unlock the tokens from the votes
-                        // kine_stat_tracker::Pallet::<T>::do_update_wallet_tokens(
-                        //     vote.voter.clone(), 
-                        //     kine_stat_tracker::FeatureType::Festival,
-                        //     kine_stat_tracker::TokenType::Locked,
-                        //     user_reward, true
-                        // ).unwrap();
 
                     }
 
-                    Ok(().into())
+                    Ok(remaining_lockup)
                 }
     
 
-                // Returns the remainder of the prize pool, after the owner's share.
+                // Returns the owner's share and the remaining prize pool.
                 fn do_calculate_owner_reward(
                     owner_id: T::AccountId,
                     total_lockup: BalanceOf<T>,
-                ) -> Result<BalanceOf<T>, DispatchError> {
-                        
-                    let owner_share = 
+                ) -> Result<(BalanceOf<T>, BalanceOf<T>), DispatchError> {
+                    
+                    //TODO-16
+                    let owner_reward = 
                         total_lockup
                         .checked_div(&50u32.into()) // 2%
                         .ok_or(Error::<T>::Underflow)?;
+
+                    let mut remaining_lockup =
+                        total_lockup
+                        .checked_sub(&owner_reward)
+                        .ok_or(Error::<T>::Underflow)?;
+
+                    Ok((owner_reward, remaining_lockup))
+                }
+
+                // After the voters have been rewarded, transfer the owner's share
+                // and any remaining residue in the pool, resulting from rounding down.
+                fn do_handle_owner_reward(
+                    owner_id: T::AccountId,
+                    owner_share: BalanceOf<T>,
+                    remaining_lockup: BalanceOf<T>,
+                ) -> DispatchResultWithPostInfo {
+                        
+                    let total_share = 
+                        owner_share
+                        .checked_add(&remaining_lockup) // 2%
+                        .ok_or(Error::<T>::Overflow)?;
 
                     kine_stat_tracker::Pallet::<T>::do_update_wallet_tokens(
                         owner_id, 
                         kine_stat_tracker::FeatureType::Festival,
                         kine_stat_tracker::TokenType::Claimable,
-                        owner_share, false,
+                        total_share, false,
                     ).unwrap();
-          
-                    let mut remaining_lockup =
-                        total_lockup
-                        .checked_sub(&owner_share)
-                        .ok_or(Error::<T>::Underflow)?;
 
-                    Ok(remaining_lockup)
+                    Ok(().into())
                 }
+                
+
     
                 fn do_create_new_wallet_data(
                 ) -> Result<WalletData<BoundedVec<T::FestivalId, T::MaxOwnedFestivals>>, DispatchError> {
