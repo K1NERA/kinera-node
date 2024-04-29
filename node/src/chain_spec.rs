@@ -269,6 +269,26 @@ fn testnet_genesis(
 		)]).unwrap(),
 	);
 
+ 
+
+  let venture_capital: (
+		BoundedVec<u8, RankingStringLimit>,
+		BoundedVec<u8, RankingStringLimit>,
+		u64,
+		BoundedVec<(
+			BoundedVec<u8, CategoryStringLimit>,
+			BoundedVec<u8, TagStringLimit>,
+		), MaxTags>,
+	) = (
+		"Venture Capital and Institutional Content Creators".as_bytes().to_vec().try_into().unwrap(),
+		"institutional projects ventures capi:  Some of the best discussions are organised by investment companies, foundations or companies connected to projects. Here we list and rank the institutional content.".as_bytes().to_vec().try_into().unwrap(),
+		4800u64.into(),
+		TryInto::try_into(vec![(
+			"Just FUN".as_bytes().to_vec().try_into().unwrap(),
+			"Just FUN Others".as_bytes().to_vec().try_into().unwrap(),
+		)]).unwrap(),
+	);
+
   let blockchain_artificial: (
 		BoundedVec<u8, RankingStringLimit>,
 		BoundedVec<u8, RankingStringLimit>,
@@ -278,7 +298,7 @@ fn testnet_genesis(
 			BoundedVec<u8, TagStringLimit>,
 		), MaxTags>,
 	) = (
-		"Blockchain and Artificial Intelligence Scientists and Educators".as_bytes().to_vec().try_into().unwrap(),
+		"Crypto and Artificial Intelligence Videos".as_bytes().to_vec().try_into().unwrap(),
 		"The intersection between Decentralised Artificial Intelligence and Blockchain is in its infancy.".as_bytes().to_vec().try_into().unwrap(),
 		4800u64.into(),
 		TryInto::try_into(vec![(
@@ -296,7 +316,7 @@ fn testnet_genesis(
 			BoundedVec<u8, TagStringLimit>,
 		), MaxTags>,
 	) = (
-		"Best Crypto Economic Analysts".as_bytes().to_vec().try_into().unwrap(),
+		"Top Traders and Analysts".as_bytes().to_vec().try_into().unwrap(),
 		"The place for market analysts, covering market analysis and market trends.".as_bytes().to_vec().try_into().unwrap(),
 		4800u64.into(),
 		TryInto::try_into(vec![(
@@ -305,23 +325,7 @@ fn testnet_genesis(
 		)]).unwrap(),
 	);
 
-  let blockchain_artificial: (
-		BoundedVec<u8, RankingStringLimit>,
-		BoundedVec<u8, RankingStringLimit>,
-		u64,
-		BoundedVec<(
-			BoundedVec<u8, CategoryStringLimit>,
-			BoundedVec<u8, TagStringLimit>,
-		), MaxTags>,
-	) = (
-		"Blockchain and Artificial Intelligence Scientists and Educators".as_bytes().to_vec().try_into().unwrap(),
-		"The intersection between Decentralised Artificial Intelligence and Blockchain is in its infancy.".as_bytes().to_vec().try_into().unwrap(),
-		4800u64.into(),
-		TryInto::try_into(vec![(
-			"Just FUN".as_bytes().to_vec().try_into().unwrap(),
-			"Just FUN Others".as_bytes().to_vec().try_into().unwrap(),
-		)]).unwrap(),
-	);
+ 
 
   let institutional_content: (
 		BoundedVec<u8, RankingStringLimit>,
@@ -351,7 +355,7 @@ fn testnet_genesis(
 			BoundedVec<u8, TagStringLimit>,
 		), MaxTags>,
 	) = (
-		"Degen Tubers".as_bytes().to_vec().try_into().unwrap(),
+		"Top Degen Tubers".as_bytes().to_vec().try_into().unwrap(),
 		"Tubers, analysts and traders who frequently engage in highly speculative and risky activities. Only out of the box ideas, please." 
     .as_bytes().to_vec().try_into().unwrap(),
 		4800u64.into(),
@@ -657,6 +661,7 @@ fn testnet_genesis(
 		rl_best_crypto,
 		rl_documentaries_and_fiction,
     crypto_advocates,
+    venture_capital,
     blockchain_artificial,
     crypto_economic_analysts,
     institutional_content,
@@ -688,6 +693,10 @@ fn testnet_genesis(
 				"Science Fiction".as_bytes().to_vec().try_into().unwrap(),
 				"Drama".as_bytes().to_vec().try_into().unwrap(),
 				"Documentary".as_bytes().to_vec().try_into().unwrap(),
+        "Horror".as_bytes().to_vec().try_into().unwrap(),
+        "Thriller".as_bytes().to_vec().try_into().unwrap(),
+        "Romantic ".as_bytes().to_vec().try_into().unwrap(),
+        "Comedy ".as_bytes().to_vec().try_into().unwrap(),
 		].try_into().unwrap();
 
 		let rl_stars_tags : BoundedVec<BoundedVec<u8, TagStringLimit>, MaxTags>
@@ -834,20 +843,23 @@ fn testnet_genesis(
 	)> = vec![
 		(("Movie".as_bytes().to_vec().try_into().unwrap(), "Cinema".as_bytes().to_vec().try_into().unwrap()), rl_cinema_tags.clone()),
 		(("Movie".as_bytes().to_vec().try_into().unwrap(), "Stars".as_bytes().to_vec().try_into().unwrap()), rl_stars_tags.clone()),
+    (("Movie".as_bytes().to_vec().try_into().unwrap(), "Crypto".as_bytes().to_vec().try_into().unwrap()), rl_cinema_tags.clone()),
 		(("Movie".as_bytes().to_vec().try_into().unwrap(), "Just FUN".as_bytes().to_vec().try_into().unwrap()), rl_just_fun_tags.clone()),
 		(("Movie".as_bytes().to_vec().try_into().unwrap(), "We Festivals".as_bytes().to_vec().try_into().unwrap()), rl_we_festivals_tags.clone()),
 		(("Movie".as_bytes().to_vec().try_into().unwrap(), "Artifitial Intelligence".as_bytes().to_vec().try_into().unwrap()), rl_artificial_intelligence_tags.clone()),
 		(("Movie".as_bytes().to_vec().try_into().unwrap(), "Gaming/Streamers".as_bytes().to_vec().try_into().unwrap()), rl_gaming_streamers_tags.clone()),
 
 		(("Festival".as_bytes().to_vec().try_into().unwrap(), "Cinema".as_bytes().to_vec().try_into().unwrap()), rl_cinema_tags.clone()),
-		(("Festival".as_bytes().to_vec().try_into().unwrap(), "Stars".as_bytes().to_vec().try_into().unwrap()), rl_stars_tags.clone()),
+    (("Festival".as_bytes().to_vec().try_into().unwrap(), "Crypto".as_bytes().to_vec().try_into().unwrap()), rl_cinema_tags.clone()),
+		(("Festival".as_bytes().to_vec().try_into().unwrap(), "Stars".as_bytes().to_vec().try_into().unwrap()), rl_cinema_tags.clone()),
 		(("Festival".as_bytes().to_vec().try_into().unwrap(), "Just FUN".as_bytes().to_vec().try_into().unwrap()), rl_just_fun_tags.clone()),
 		(("Festival".as_bytes().to_vec().try_into().unwrap(), "We Festivals".as_bytes().to_vec().try_into().unwrap()), rl_we_festivals_tags.clone()),
 		(("Festival".as_bytes().to_vec().try_into().unwrap(), "Artifitial Intelligence".as_bytes().to_vec().try_into().unwrap()), rl_artificial_intelligence_tags.clone()),
 		(("Festival".as_bytes().to_vec().try_into().unwrap(), "Gaming/Streamers".as_bytes().to_vec().try_into().unwrap()), rl_gaming_streamers_tags.clone()),
 
 		(("Ranking List".as_bytes().to_vec().try_into().unwrap(), "Cinema".as_bytes().to_vec().try_into().unwrap()), rl_cinema_tags),
-		(("Ranking List".as_bytes().to_vec().try_into().unwrap(), "Stars".as_bytes().to_vec().try_into().unwrap()), rl_stars_tags),
+		(("Ranking List".as_bytes().to_vec().try_into().unwrap(), "Stars".as_bytes().to_vec().try_into().unwrap()), rl_stars_tags.clone()),
+    (("Ranking List".as_bytes().to_vec().try_into().unwrap(), "Crypto".as_bytes().to_vec().try_into().unwrap()), rl_stars_tags.clone()),
 		(("Ranking List".as_bytes().to_vec().try_into().unwrap(), "Just FUN".as_bytes().to_vec().try_into().unwrap()), rl_just_fun_tags),
 		(("Ranking List".as_bytes().to_vec().try_into().unwrap(), "We Festivals".as_bytes().to_vec().try_into().unwrap()), rl_we_festivals_tags),
 		(("Ranking List".as_bytes().to_vec().try_into().unwrap(), "Artifitial Intelligence".as_bytes().to_vec().try_into().unwrap()), rl_artificial_intelligence_tags),

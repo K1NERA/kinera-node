@@ -167,10 +167,11 @@
                 }
     
                 #[derive(Clone, Encode, Copy, Decode, Eq, PartialEq, RuntimeDebug, MaxEncodedLen, TypeInfo)]
-                pub struct Vote<AccountId, Balance> {
+                pub struct Vote<AccountId, Balance, BoundedNameString> {
                     pub voter: AccountId,
                     pub amount: Balance,
                     pub amount_after_weight: Balance,
+                    pub user: BoundedNameString,
                 }
     
                 #[derive(Clone, Encode, Copy, Decode, Eq, PartialEq, RuntimeDebug, MaxEncodedLen, TypeInfo)]
@@ -218,7 +219,7 @@
                             BalanceOf<T>, //BalanceOf
                             BoundedBTreeMap<
                                 BoundedVec<u8, T::LinkStringLimit>, 
-                                BoundedVec<Vote<T::AccountId, BalanceOf<T>>, T::MaxVotes>,
+                                BoundedVec<Vote<T::AccountId, BalanceOf<T>, BoundedVec<u8, T::NameStringLimit>>, T::MaxVotes>,
                                 T::MaxVotes,
                             >, //VoteMap
                             BoundedVec<(CategoryId<T>, TagId<T>), T::MaxTags>, //CategoryTagList
@@ -268,7 +269,7 @@
                 FestivalCreated(T::AccountId, T::FestivalId),
                 MovieAddedToFestival(T::FestivalId, String, T::AccountId),
                 MoviesAddedToFestival(T::FestivalId, T::AccountId),
-                VotedForMovieInFestival(T::FestivalId, String, T::AccountId),
+                VotedForMovieInFestival(T::FestivalId, String, T::AccountId, String),
                 FestivalHasBegun(T::FestivalId),
                 // FestivalHasEnded(T::FestivalId), //TODO-6
                 FestivalHasEnded(T::FestivalId, Vec<T::AccountId>, BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>), 
@@ -276,6 +277,7 @@
                 FestivalActivated(T::FestivalId, T::AccountId),
                 FestivalTokensClaimed(T::AccountId, BalanceOf<T>),
                 FestivalDetailsUpdated(T::FestivalId, T::AccountId, Vec<u8>, Vec<u8>),
+                FestivalRemoved(T::FestivalId, T::AccountId),
             }
     
     
@@ -296,6 +298,10 @@
                 NoFestivalAdminAccess,
                 NotEnoughMoviesInFestival,
                 NotAwaitingActivation,
+
+                NotPermissionToRemove,
+                FestivalHaveVote,
+
     
                 MovieAlreadyInFestival,
                 MovieNotInFestival,
@@ -670,13 +676,14 @@
                     festival_id: T::FestivalId,
                     movie_id: String,
                     vote_amount: BalanceOf<T>,
+                    user: String,
                 )-> DispatchResultWithPostInfo{
                     
                     let who = ensure_signed(origin)?;
     
-                    Self::do_vote_for_movie_in_festival(&who,festival_id, movie_id.clone(), vote_amount)?;
+                    Self::do_vote_for_movie_in_festival(&who,festival_id, movie_id.clone(), vote_amount, user.clone())?;
     
-                    Self::deposit_event(Event::VotedForMovieInFestival(festival_id, movie_id, who.clone()));
+                    Self::deposit_event(Event::VotedForMovieInFestival(festival_id, movie_id, who.clone(), user));
                     Ok(().into())
                 }
             
@@ -745,6 +752,45 @@
                 
                     Ok(().into())
                 }
+
+                #[pallet::call_index(8)] #[pallet::weight(Weight::from_parts(10_000, 0) + T::DbWeight::get().reads_writes(1,1))]
+                pub fn remove_festival(
+                  origin: OriginFor<T>,
+                  festival_id: T::FestivalId,
+              ) -> DispatchResultWithPostInfo {
+                  let who = ensure_signed(origin)?;
+              
+                  Festivals::<T>::try_mutate_exists(festival_id, |festival_option| -> DispatchResult {
+                      let festival = festival_option.as_mut().ok_or(Error::<T>::NonexistentFestival)?;
+            
+                      ensure!(
+                          festival.owner == who,
+                          Error::<T>::NoFestivalAdminAccess
+                      );
+
+                      ensure!(
+                        festival.status != FestivalStatus::Active ,
+                        Error::<T>::NotPermissionToRemove
+                      );
+
+                      ensure!(
+                        festival.vote_map.is_empty(),
+                        Error::<T>::FestivalHaveVote
+                      );
+
+                    
+              
+
+                      *festival_option = None;
+              
+  
+                      Self::deposit_event(Event::FestivalRemoved(festival_id, who));
+              
+                      Ok(().into())
+                  })?;
+              
+                  Ok(().into())
+              }
     
             }
     
@@ -787,7 +833,7 @@
                         
                         let bounded_vote_map: BoundedBTreeMap<
                             BoundedVec<u8, T::LinkStringLimit>, 
-                            BoundedVec<Vote<T::AccountId, BalanceOf<T>>, T::MaxVotes>,
+                            BoundedVec<Vote<T::AccountId, BalanceOf<T>, BoundedVec<u8, T::NameStringLimit>>, T::MaxVotes>,
                             T::MaxVotes,
                         > = BoundedBTreeMap::new();
                         
@@ -1063,11 +1109,12 @@
                         festival_id: T::FestivalId,
                         movie_id_str: String,
                         vote_amount : BalanceOf<T>,
+                        user_str: String,
                     )-> Result<(), DispatchError> {
                         
                         Festivals::<T>::try_mutate_exists(festival_id, |festival| -> DispatchResult {
                             let mut fest = festival.as_mut().ok_or(Error::<T>::NonexistentFestival)?;   
-                            
+                            let user: BoundedVec<u8, T::NameStringLimit> = TryInto::try_into(user_str.into_bytes()).map_err(|_| Error::<T>::BadMetadata)?;
                             let movie_id: BoundedVec<u8, T::LinkStringLimit>
                                 = TryInto::try_into(movie_id_str.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?;
 
@@ -1133,6 +1180,7 @@
                                 voter: who.clone(),
                                 amount: vote_amount,
                                 amount_after_weight: vote_weight,
+                                user: user
                             };
     
                             fest.total_lockup = fest.total_lockup.checked_add(&vote_amount).ok_or(Error::<T>::Overflow)?;
@@ -1141,7 +1189,7 @@
                                 fest.vote_map.get_mut(&movie_id.clone()).unwrap().try_push(vote).unwrap();
                             }
                             else {
-                                let mut bounded_vote_list : BoundedVec<Vote<T::AccountId, BalanceOf<T>>, T::MaxVotes>
+                                let mut bounded_vote_list : BoundedVec<Vote<T::AccountId, BalanceOf<T>,  BoundedVec<u8, T::NameStringLimit>>, T::MaxVotes>
                                     = TryInto::try_into(Vec::new()).map_err(|_|Error::<T>::BadMetadata)?;
                                 bounded_vote_list.try_push(vote).unwrap();
                                 fest.vote_map.try_insert(movie_id.clone(), bounded_vote_list).unwrap();
