@@ -55,12 +55,5 @@ After two years of discreet work, Referenda 774 on Polkassembly introduces the K
 ## Ongoing Work
 The development of Kinera is progressing steadily, with significant milestones already achieved. The MVP is pivotal in creating a comprehensive and user-centric decentralized application and shows that people choose content that reflects their interests better than algorithms.
 
-## Videos
-
-### Kinera Introduction Video
-[![Kinera Introduction](https://img.youtube.com/vi/rgfE0s3445DY/0.jpg)](https://www.youtube.com/watch?v=rgfE0s3445DY)
-
-### Kinera Features Overview
-[![Kinera Features](https://img.youtube.com/vi/yu_adf4ePrTw/0.jpg)](https://www.youtube.com/watch?v=yu_adf4ePrTw)
 
 
