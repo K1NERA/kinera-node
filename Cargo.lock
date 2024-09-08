@@ -3004,6 +3004,7 @@ dependencies = [
  "kine-ranking-list",
  "kine-stat-tracker",
  "kine-tags",
+ "kinera-communities",
  "pallet-aura",
  "pallet-balances",
  "pallet-grandpa",
@@ -3103,6 +3104,21 @@ dependencies = [
  "substrate-build-script-utils",
  "substrate-frame-rpc-system",
  "try-runtime-cli",
+]
+
+[[package]]
+name = "kinera-communities"
+version = "4.0.0-dev"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
