@@ -60,6 +60,7 @@ frame-benchmarking-cli = { workspace = true }
 
 # Local Dependencies
 kine-runtime = { workspace = true }
+
 kine-tags = { workspace = true, default-features = false}
 kine-ranking-list = { workspace = true, default-features = false}
 

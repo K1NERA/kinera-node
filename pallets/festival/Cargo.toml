@@ -26,7 +26,6 @@ kine-tags = { workspace = true }
 kine-stat-tracker = { workspace = true }
 kine-movie = { workspace = true, default-features = false }
 
-
 [dev-dependencies]
 sp-core = { workspace = true }
 sp-io = { workspace = true }

@@ -1,4 +1,4 @@
-# Kinera Node Template based in the Substrate Node Template
+# Kinera Template based in the Substrate Node Template
 
 ### Build
 

@@ -32,6 +32,7 @@ kine-movie = { path = "pallets/movie", default-features = false }
 kine-moderation = { path = "pallets/moderation", default-features = false }
 kine-festival = { path = "pallets/festival", default-features = false }
 kine-tags = { path = "pallets/tags", default-features = false }
+kinera-communities = { path = "pallets/communities", default-features = false }
 kine-ranking-list = { path = "pallets/ranking-list", default-features = false }
 kine-stat-tracker = { path = "pallets/stat-tracker", default-features = false }
 #kine-template = { path = "pallets/template", default-features = false }

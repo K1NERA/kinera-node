@@ -51,7 +51,7 @@ pub use sp_runtime::{Perbill, Permill};
 // pub use pallet_template;
 
 pub use kine_festival;
-
+pub use kinera_communities;
 /// An index to a block.
 pub type BlockNumber = u32;
 
@@ -99,8 +99,8 @@ pub mod opaque {
 // https://docs.substrate.io/main-docs/build/upgrade#runtime-versioning
 #[sp_version::runtime_version]
 pub const VERSION: RuntimeVersion = RuntimeVersion {
-	spec_name: create_runtime_str!("node-template"),
-	impl_name: create_runtime_str!("node-template"),
+	spec_name: create_runtime_str!("Kinera"),
+	impl_name: create_runtime_str!("Kinera"),
 	authoring_version: 1,
 	// The version of the runtime specification. A full node will not attempt to use its native
 	//   runtime in substitute for the on-chain Wasm runtime unless all of `spec_name`,
@@ -252,6 +252,8 @@ impl pallet_balances::Config for Runtime {
 	type MaxHolds = ();
 }
 
+
+
 parameter_types! {
 	pub FeeMultiplier: Multiplier = Multiplier::one();
 }
@@ -339,7 +341,7 @@ parameter_types! {
 }
 
 impl kine_festival::Config for Runtime{
-    type RuntimeEvent = RuntimeEvent;
+  type RuntimeEvent = RuntimeEvent;
   type DescStringLimit = DescStringLimit;
 	type FestivalId = u32;
 	type MaxMoviesInFest = MaxMoviesInFest;
@@ -349,8 +351,16 @@ impl kine_festival::Config for Runtime{
 	type MaxVotes = MaxVotes;
 	type FestBlockSafetyMargin = FestBlockSafetyMargin;
 	type PalletId = PalletFestivalId;
-
 }
+
+impl kinera_communities::Config for Runtime {
+  type RuntimeEvent = RuntimeEvent;
+  // Defina um valor fixo para o tempo de votação (exemplo: 100 blocos)
+  type VotingDuration = ConstU32<100>; 
+  type MaxNameLength = ConstU32<64>; // Limite de 64 caracteres para o nome
+  type MaxDescLength = ConstU32<300>; // Limite de 256 caracteres para a descrição
+}
+
 
 
 // Stat Tracker
@@ -426,8 +436,10 @@ construct_runtime!(
 		// Include the custom logic from the pallet-template in the runtime.
 		// TemplateModule: pallet_template,
 		FestivalModule: kine_festival,
+    CommunitiesModule: kinera_communities,
 		ModerationModule: kine_moderation,
 		MovieModule: kine_movie,
+
 		RankingListModule: kine_ranking_list,
 		StatTrackerModule: kine_stat_tracker,
 		TagsModule: kine_tags,
