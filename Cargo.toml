@@ -2,7 +2,7 @@
 members = [
 	"node",
 	"pallets/*",
-  "pallets/festival",
+  "pallets/constellations",
 	"runtime",
 ]
 
@@ -30,7 +30,7 @@ try-runtime-cli = { git = "https://github.com/paritytech/substrate.git", branch 
 # Local
 kine-movie = { path = "pallets/movie", default-features = false }
 kine-moderation = { path = "pallets/moderation", default-features = false }
-kine-festival = { path = "pallets/festival", default-features = false }
+kinera-constellations = { path = "pallets/constellations", default-features = false }
 kine-tags = { path = "pallets/tags", default-features = false }
 kinera-communities = { path = "pallets/communities", default-features = false }
 kine-ranking-list = { path = "pallets/ranking-list", default-features = false }

@@ -3,7 +3,7 @@ use kine_runtime::{
 	SudoConfig, SystemConfig, WASM_BINARY,
 	TagsModuleConfig, RankingListModuleConfig,
 	CategoryStringLimit, TagStringLimit, MaxTags, 
-	RankingStringLimit,
+	RankingStringLimit,CommunitiesModuleConfig
 };
 use sc_service::ChainType;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
@@ -13,7 +13,7 @@ use sp_runtime::{
 	traits::{IdentifyAccount, Verify},
 	BoundedVec,
 };
-
+use sp_core::crypto::Ss58Codec;
 // The URL for the telemetry server.
 // const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
 
@@ -688,6 +688,9 @@ fn testnet_genesis(
 			"Just FUN Others".as_bytes().to_vec().try_into().unwrap(),
 		)]).unwrap(),
 	);
+
+
+  
 	
 
 	// initialize the vec with the pre-built tuples
@@ -721,7 +724,22 @@ fn testnet_genesis(
     experimental_and_art_films,
     podcasts_all_tools
 	];
-	
+
+
+  let initial_community: (
+    BoundedVec<u8, CategoryStringLimit>, // Nome da comunidade
+    BoundedVec<u8, TagStringLimit>,      // Descrição da comunidade
+    AccountId                            // Dono da comunidade
+) = (
+    "Beta testers".as_bytes().to_vec().try_into().unwrap(), // Nome
+    "Community focused on creators who participated in the Kinera beta phase".as_bytes().to_vec().try_into().unwrap(), // Descrição
+    AccountId::from_ss58check("5EZ2LivaBtyaa39CVtZTtUbVPYb4buiAMaYCecMpN1rKuKs9").unwrap() // Dono
+);
+let initial_communities = vec![
+    initial_community // Pode adicionar mais comunidades aqui se necessário no futuro
+];
+
+
 
 
 // Tags Ranking Lists
@@ -978,6 +996,16 @@ fn testnet_genesis(
 		tags_module: TagsModuleConfig {
 			category_to_tag_map: initial_categories_and_tags.iter().cloned().map(|x| x).collect(),
 		},
+
+    communities_module: CommunitiesModuleConfig {
+      initial_community_name: b"Beta Testers".to_vec(),
+      initial_community_description: b"Community focused on creators who participated in Kinera's beta phase.".to_vec(),
+      initial_reason: b" <h1>Beta Testers Community</h1> - Focused on Creators from Kinera's Beta Phase The Beta Testers community is dedicated to creators who participated in Kinera's beta phase. The goal is to foster collaboration, allowing pioneers to shape and improve the platform. Members can share experiences, provide feedback, and contribute to future features. This exclusive community ensures a space for meaningful discussions and continued commitment to Kineras development.
+      ".to_vec(),
+      initial_social_owner: b"Kinera Beta Testers".to_vec(),
+      initial_community_icon: b"https://i.ibb.co/3NDg07r/DALL-E-2024-09-09-11-37-44-A-logo-for-a-community-called-Beta-Testers-featuring-a-stylized-symbol-in.webp".to_vec(),
+      initial_community_owner: Some(AccountId::from_ss58check("5FZJa46KfwDwER6ft66CjvVyszctVFEV2AgA4UmoxfgtA4E3").unwrap()),
+    },
 
 		ranking_list_module: RankingListModuleConfig {
 			default_ranking_lists: initial_ranking_lists.iter().cloned().map(|x| x).collect(),

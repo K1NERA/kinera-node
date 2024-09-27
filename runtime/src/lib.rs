@@ -39,6 +39,7 @@ pub use frame_support::{
 	StorageValue,
 	PalletId,
 };
+
 pub use frame_system::Call as SystemCall;
 pub use pallet_balances::Call as BalancesCall;
 pub use pallet_timestamp::Call as TimestampCall;
@@ -50,7 +51,7 @@ pub use sp_runtime::{Perbill, Permill};
 /// Import the template pallet.
 // pub use pallet_template;
 
-pub use kine_festival;
+pub use kinera_constellations;
 pub use kinera_communities;
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -252,8 +253,6 @@ impl pallet_balances::Config for Runtime {
 	type MaxHolds = ();
 }
 
-
-
 parameter_types! {
 	pub FeeMultiplier: Multiplier = Multiplier::one();
 }
@@ -340,7 +339,7 @@ parameter_types! {
 	pub const PalletFestivalId: PalletId = PalletId(*b"FesStash");
 }
 
-impl kine_festival::Config for Runtime{
+impl kinera_constellations::Config for Runtime{
   type RuntimeEvent = RuntimeEvent;
   type DescStringLimit = DescStringLimit;
 	type FestivalId = u32;
@@ -358,9 +357,12 @@ impl kinera_communities::Config for Runtime {
   // Defina um valor fixo para o tempo de votação (exemplo: 100 blocos)
   type VotingDuration = ConstU32<100>; 
   type MaxNameLength = ConstU32<64>; // Limite de 64 caracteres para o nome
-  type MaxDescLength = ConstU32<300>; // Limite de 256 caracteres para a descrição
+  type MaxDescLength = ConstU32<300>;
+  type MaxReasonLength = ConstU32<600>;
+  type MaxIconLength = ConstU32<400>;
+  type MaxSocialUserNameLength = ConstU32<60>; 
+  type MaxCommunitiesPerUser = ConstU32<60>; 
 }
-
 
 
 // Stat Tracker
@@ -377,7 +379,6 @@ impl kine_stat_tracker::Config for Runtime {
 	type NameStringLimit = CategoryStringLimit;
 	type PalletId = PalletStatTrackerId;
 }
-
 
 // Tags
 parameter_types! {
@@ -435,7 +436,7 @@ construct_runtime!(
 		Sudo: pallet_sudo,
 		// Include the custom logic from the pallet-template in the runtime.
 		// TemplateModule: pallet_template,
-		FestivalModule: kine_festival,
+		FestivalModule: kinera_constellations,
     CommunitiesModule: kinera_communities,
 		ModerationModule: kine_moderation,
 		MovieModule: kine_movie,
@@ -445,6 +446,8 @@ construct_runtime!(
 		TagsModule: kine_tags,
 	}
 );
+
+
 
 /// The address format for describing accounts.
 pub type Address = sp_runtime::MultiAddress<AccountId, ()>;

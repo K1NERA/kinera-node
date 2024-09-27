@@ -47,7 +47,7 @@ frame-system-benchmarking = { workspace = true, default-features = false, option
 
 # Local Dependencies
 #pallet-template = { workspace = true, default-features = false }
-kine-festival = { workspace = true, default-features = false }
+kinera-constellations = { workspace = true, default-features = false }
 
 kine-moderation = { workspace = true, default-features = false }
 kine-movie = { workspace = true, default-features = false }
@@ -76,7 +76,7 @@ std = [
 	"pallet-balances/std",
 	"pallet-grandpa/std",
 	"pallet-sudo/std",
-	"kine-festival/std",
+	"kinera-constellations/std",
 	"kine-moderation/std",
 	"kine-movie/std",
 	"kine-ranking-list/std",
@@ -107,7 +107,7 @@ runtime-benchmarks = [
 	"pallet-balances/runtime-benchmarks",
 	"pallet-grandpa/runtime-benchmarks",
 	"pallet-sudo/runtime-benchmarks",
-	"kine-festival/std",
+	"kinera-constellations/std",
 	"kine-moderation/std",
 	"kine-movie/std",
 	"kine-ranking-list/std",
@@ -125,7 +125,7 @@ try-runtime = [
 	"pallet-balances/try-runtime",
 	"pallet-grandpa/try-runtime",
 	"pallet-sudo/try-runtime",
-	"kine-festival/std",
+	"kinera-constellations/std",
 	"kine-moderation/std",
 	"kine-movie/std",
 	"kine-ranking-list/std",
