@@ -357,11 +357,14 @@ impl kinera_communities::Config for Runtime {
   // Defina um valor fixo para o tempo de votação (exemplo: 100 blocos)
   type VotingDuration = ConstU32<100>; 
   type MaxNameLength = ConstU32<64>; // Limite de 64 caracteres para o nome
-  type MaxDescLength = ConstU32<300>;
-  type MaxReasonLength = ConstU32<600>;
+  type MaxDescLength = ConstU32<5000>;
+  type MaxReasonLength = ConstU32<5000>;
   type MaxIconLength = ConstU32<400>;
   type MaxSocialUserNameLength = ConstU32<60>; 
   type MaxCommunitiesPerUser = ConstU32<60>; 
+  type Currency = Balances;
+  type MaxCategoryLength = ConstU32<400>;
+  type MaxShortDescLength = ConstU32<1000>;
 }
 
 

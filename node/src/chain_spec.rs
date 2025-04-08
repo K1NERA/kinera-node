@@ -802,6 +802,17 @@ let initial_communities = vec![
 				"Others".as_bytes().to_vec().try_into().unwrap(),
 		].try_into().unwrap();
 			
+		let media_makers_tags : BoundedVec<BoundedVec<u8, TagStringLimit>, MaxTags>
+			= vec![
+				"Activists".as_bytes().to_vec().try_into().unwrap(),
+				"Artists and Designers".as_bytes().to_vec().try_into().unwrap(),
+				"Educators".as_bytes().to_vec().try_into().unwrap(),
+				"Entertainers".as_bytes().to_vec().try_into().unwrap(),
+				"Food and Cooking".as_bytes().to_vec().try_into().unwrap(),
+				"Lifestyle Influencers".as_bytes().to_vec().try_into().unwrap(),
+				"Tech and Gadget".as_bytes().to_vec().try_into().unwrap(),
+		].try_into().unwrap();
+
 		let rl_artificial_intelligence_tags : BoundedVec<BoundedVec<u8, TagStringLimit>, MaxTags>
 			= vec![
 				"AI Drama".as_bytes().to_vec().try_into().unwrap(),
@@ -921,22 +932,22 @@ let initial_communities = vec![
 		(BoundedVec<u8, CategoryStringLimit>, BoundedVec<u8, CategoryStringLimit>),
 		BoundedVec<BoundedVec<u8, TagStringLimit>, MaxTags>
 	)> = vec![
-    (("Movie".as_bytes().to_vec().try_into().unwrap(), "Artifitial Intelligence".as_bytes().to_vec().try_into().unwrap()), rl_artificial_intelligence_tags.clone()),
-		(("Movie".as_bytes().to_vec().try_into().unwrap(), "Cinema".as_bytes().to_vec().try_into().unwrap()), rl_cinema_tags.clone()),
+    (("Movie".as_bytes().to_vec().try_into().unwrap(), "Artificial Intelligence".as_bytes().to_vec().try_into().unwrap()), rl_artificial_intelligence_tags.clone()),
+	(("Movie".as_bytes().to_vec().try_into().unwrap(), "Cinema".as_bytes().to_vec().try_into().unwrap()), rl_cinema_tags.clone()),
 	//	(("Movie".as_bytes().to_vec().try_into().unwrap(), "Stars".as_bytes().to_vec().try_into().unwrap()), rl_stars_tags.clone()),
     (("Movie".as_bytes().to_vec().try_into().unwrap(), "Crypto".as_bytes().to_vec().try_into().unwrap()), crypto_tags.clone()),
-    (("Movie".as_bytes().to_vec().try_into().unwrap(), "Gaming/Streamers".as_bytes().to_vec().try_into().unwrap()), rl_gaming_streamers_tags.clone()),
+    (("Movie".as_bytes().to_vec().try_into().unwrap(), "Gamers/Streamers".as_bytes().to_vec().try_into().unwrap()), rl_gaming_streamers_tags.clone()),
     (("Movie".as_bytes().to_vec().try_into().unwrap(), "Just Fun".as_bytes().to_vec().try_into().unwrap()), rl_strategy_tags.clone()),
     (("Movie".as_bytes().to_vec().try_into().unwrap(), "We Festivals".as_bytes().to_vec().try_into().unwrap()), rl_we_festivals_tags.clone()),
 
 		//(("Movie".as_bytes().to_vec().try_into().unwrap(), "Just FUN".as_bytes().to_vec().try_into().unwrap()), rl_just_fun_tags.clone()),
 		
 
-
-    (("Festival".as_bytes().to_vec().try_into().unwrap(), "Artifitial Intelligence".as_bytes().to_vec().try_into().unwrap()), rl_artificial_intelligence_tags.clone()),
-		(("Festival".as_bytes().to_vec().try_into().unwrap(), "Cinema".as_bytes().to_vec().try_into().unwrap()), rl_cinema_tags.clone()),
+	(("Festival".as_bytes().to_vec().try_into().unwrap(), "Media Makers".as_bytes().to_vec().try_into().unwrap()), media_makers_tags.clone()),
+    (("Festival".as_bytes().to_vec().try_into().unwrap(), "Artificial Intelligence".as_bytes().to_vec().try_into().unwrap()), rl_artificial_intelligence_tags.clone()),
+	(("Festival".as_bytes().to_vec().try_into().unwrap(), "Cinema".as_bytes().to_vec().try_into().unwrap()), rl_cinema_tags.clone()),
     (("Festival".as_bytes().to_vec().try_into().unwrap(), "Crypto".as_bytes().to_vec().try_into().unwrap()), crypto_tags.clone()),
-    (("Festival".as_bytes().to_vec().try_into().unwrap(), "Gaming/Streamers".as_bytes().to_vec().try_into().unwrap()), rl_gaming_streamers_tags.clone()),
+    (("Festival".as_bytes().to_vec().try_into().unwrap(), "Gamers/Streamers".as_bytes().to_vec().try_into().unwrap()), rl_gaming_streamers_tags.clone()),
     (("Festival".as_bytes().to_vec().try_into().unwrap(), "Just Fun".as_bytes().to_vec().try_into().unwrap()), rl_strategy_tags.clone()),
     (("Festival".as_bytes().to_vec().try_into().unwrap(), "We Festivals".as_bytes().to_vec().try_into().unwrap()), rl_we_festivals_tags.clone()),
 
@@ -945,10 +956,10 @@ let initial_communities = vec![
 
 		
 
-    (("Ranking List".as_bytes().to_vec().try_into().unwrap(), "Artifitial Intelligence".as_bytes().to_vec().try_into().unwrap()), rl_artificial_intelligence_tags),
+    (("Ranking List".as_bytes().to_vec().try_into().unwrap(), "Artificial Intelligence".as_bytes().to_vec().try_into().unwrap()), rl_artificial_intelligence_tags),
 		(("Ranking List".as_bytes().to_vec().try_into().unwrap(), "Cinema".as_bytes().to_vec().try_into().unwrap()), rl_cinema_tags),
     (("Ranking List".as_bytes().to_vec().try_into().unwrap(), "Crypto".as_bytes().to_vec().try_into().unwrap()), crypto_tags.clone()),
-    (("Ranking List".as_bytes().to_vec().try_into().unwrap(), "Gaming/Streamers".as_bytes().to_vec().try_into().unwrap()), rl_gaming_streamers_tags),
+    (("Ranking List".as_bytes().to_vec().try_into().unwrap(), "Gamers/Streamers".as_bytes().to_vec().try_into().unwrap()), rl_gaming_streamers_tags),
     (("Ranking List".as_bytes().to_vec().try_into().unwrap(), "Just Fun".as_bytes().to_vec().try_into().unwrap()), rl_strategy_tags.clone()),
     (("Ranking List".as_bytes().to_vec().try_into().unwrap(), "We Festivals".as_bytes().to_vec().try_into().unwrap()), rl_we_festivals_tags),
 
@@ -1000,9 +1011,11 @@ let initial_communities = vec![
     communities_module: CommunitiesModuleConfig {
       initial_community_name: b"Beta Testers".to_vec(),
       initial_community_description: b"Community focused on creators who participated in Kinera's beta phase.".to_vec(),
+	  initial_short_description: b"Community focused on creators who participated in Kinera's beta phase.".to_vec(),
       initial_reason: b" <h1>Beta Testers Community</h1> - Focused on Creators from Kinera's Beta Phase The Beta Testers community is dedicated to creators who participated in Kinera's beta phase. The goal is to foster collaboration, allowing pioneers to shape and improve the platform. Members can share experiences, provide feedback, and contribute to future features. This exclusive community ensures a space for meaningful discussions and continued commitment to Kineras development.
       ".to_vec(),
       initial_social_owner: b"Kinera Beta Testers".to_vec(),
+	  initial_category: b"Kinera Beta Testers".to_vec(),
       initial_community_icon: b"https://i.ibb.co/3NDg07r/DALL-E-2024-09-09-11-37-44-A-logo-for-a-community-called-Beta-Testers-featuring-a-stylized-symbol-in.webp".to_vec(),
       initial_community_owner: Some(AccountId::from_ss58check("5FZJa46KfwDwER6ft66CjvVyszctVFEV2AgA4UmoxfgtA4E3").unwrap()),
     },
