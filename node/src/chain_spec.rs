@@ -1017,7 +1017,7 @@ let initial_communities = vec![
       initial_social_owner: b"Kinera Beta Testers".to_vec(),
 	  initial_category: b"Kinera Beta Testers".to_vec(),
       initial_community_icon: b"https://i.ibb.co/3NDg07r/DALL-E-2024-09-09-11-37-44-A-logo-for-a-community-called-Beta-Testers-featuring-a-stylized-symbol-in.webp".to_vec(),
-      initial_community_owner: Some(AccountId::from_ss58check("5FZJa46KfwDwER6ft66CjvVyszctVFEV2AgA4UmoxfgtA4E3").unwrap()),
+      initial_community_owner: Some(AccountId::from_ss58check("5H6RMcrTVhCAwu3nb82ckyHGWL1Ab1aZRiZcJYutAkif88xE").unwrap()),
     },
 
 		ranking_list_module: RankingListModuleConfig {
