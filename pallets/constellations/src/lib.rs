@@ -94,22 +94,36 @@ pub mod pallet {
 //* Structs *//
 
   #[derive(Clone, Encode, Copy, Decode, Eq, PartialEq, RuntimeDebug, MaxEncodedLen, TypeInfo)]
-  pub struct Festival<FestivalId, AccountId, BoundedNameString, BoundedDescString, FestivalStatus, BalanceOf, VoteMap, CategoryTagList, MoviesInFest, BlockStartEnd, BlockNumber> {
-    pub id: FestivalId,
-    pub owner: AccountId,
-    pub name: BoundedNameString,
-    pub description: BoundedDescString,
-    pub status: FestivalStatus,
-    pub max_entry: BalanceOf,
-    pub total_lockup: BalanceOf,
-    pub vote_map: VoteMap,
-    pub categories_and_tags: CategoryTagList,
-    pub internal_movies: MoviesInFest,
-    pub external_movies: MoviesInFest,
-    pub winners: MoviesInFest,
-    pub block_start_end: BlockStartEnd,
-    pub vote_power_decrease_block: BlockNumber,
-  }
+  pub struct Festival<
+  FestivalId,
+  AccountId,
+  BoundedOwnerNameString,
+  BoundedNameString,
+  BoundedDescString,
+  FestivalStatus,
+  BalanceOf,
+  VoteMap,
+  CategoryTagList,
+  MoviesInFest,
+  BlockStartEnd,
+  BlockNumber,
+> {
+  pub id: FestivalId,
+  pub owner: AccountId,
+  pub owner_id: BoundedOwnerNameString, // Novo campo adicionado
+  pub name: BoundedNameString,
+  pub description: BoundedDescString,
+  pub status: FestivalStatus,
+  pub max_entry: BalanceOf,
+  pub total_lockup: BalanceOf,
+  pub vote_map: VoteMap,
+  pub categories_and_tags: CategoryTagList,
+  pub internal_movies: MoviesInFest,
+  pub external_movies: MoviesInFest,
+  pub winners: MoviesInFest,
+  pub block_start_end: BlockStartEnd,
+  pub vote_power_decrease_block: BlockNumber,
+}
 
   #[derive(Clone, Encode, Copy, Decode, Eq, PartialEq, RuntimeDebug, MaxEncodedLen, TypeInfo)]
   pub struct BlockAssignment<BoundedFestivals> {
@@ -156,6 +170,7 @@ pub mod pallet {
       Festival<
           T::FestivalId, 
           T::AccountId,
+          BoundedVec<u8, T::NameStringLimit>,
           BoundedVec<u8, T::NameStringLimit>, //BoundedNameString
           BoundedVec<u8, T::DescStringLimit>, //TODO-5
           FestivalStatus,
@@ -255,6 +270,7 @@ pub mod pallet {
     #[pallet::call_index(0)]#[pallet::weight(Weight::from_parts(10_000, 0) + T::DbWeight::get().reads_writes(1,1))]
     pub fn create_festival(
         origin: OriginFor<T>,
+        owner: String,
         bounded_name: String,
         bounded_description: String, 
         max_entry: BalanceOf<T>,
@@ -278,6 +294,7 @@ pub mod pallet {
       // create the festival & bind the owner to it
       let festival_id = Self::do_create_festival(
         who.clone(),
+        owner,
         bounded_name, bounded_description, max_entry,
         bounded_internal_movie_ids, bounded_external_movie_ids,
         category_tag_list.clone(), FestivalStatus::AwaitingActivation
@@ -663,53 +680,52 @@ pub mod pallet {
 
   impl<T: Config> Pallet<T> {
     pub fn do_create_festival(
-        who: T::AccountId,
-        name_str: String,
-        description_str: String,
-        min_ticket_price: BalanceOf<T>,
-        internal_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>,
-        external_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>,
-        category_tag_list: BoundedVec<(CategoryId<T>, TagId<T>), T::MaxTags>,
-        status: FestivalStatus,
-    ) -> Result<T::FestivalId, DispatchError> {
-
-      let festival_id =
-          NextFestivalId::<T>::try_mutate(|id| -> Result<T::FestivalId, DispatchError> {
-              let current_id = *id;
-              *id = id
-                  .checked_add(&One::one())
-                  .ok_or(Error::<T>::Overflow)?;
-              Ok(current_id)
-          })
-      ?;
-
-      let name: BoundedVec<u8, T::NameStringLimit>
-          = TryInto::try_into(name_str.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?;
-
-      let description: BoundedVec<u8, T::DescStringLimit>
-          = TryInto::try_into(description_str.as_bytes().to_vec()).map_err(|_|Error::<T>::BadMetadata)?;
-
-      let bounded_film_list: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>
-          = TryInto::try_into(Vec::new()).map_err(|_|Error::<T>::BadMetadata)?;
-      
+      who: T::AccountId,
+      name_str: String,
+      owner_id: String, // Novo parâmetro adicionado
+      description_str: String,
+      min_ticket_price: BalanceOf<T>,
+      internal_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>,
+      external_movie_ids: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest>,
+      category_tag_list: BoundedVec<(CategoryId<T>, TagId<T>), T::MaxTags>,
+      status: FestivalStatus,
+  ) -> Result<T::FestivalId, DispatchError> {
+      let festival_id = NextFestivalId::<T>::try_mutate(|id| -> Result<T::FestivalId, DispatchError> {
+          let current_id = *id;
+          *id = id.checked_add(&One::one()).ok_or(Error::<T>::Overflow)?;
+          Ok(current_id)
+      })?;
+  
+      let name: BoundedVec<u8, T::NameStringLimit> =
+          TryInto::try_into(name_str.as_bytes().to_vec()).map_err(|_| Error::<T>::BadMetadata)?;
+  
+      let owner_id_bounded: BoundedVec<u8, T::NameStringLimit> =
+          TryInto::try_into(owner_id.as_bytes().to_vec()).map_err(|_| Error::<T>::BadMetadata)?;
+  
+      let description: BoundedVec<u8, T::DescStringLimit> =
+          TryInto::try_into(description_str.as_bytes().to_vec()).map_err(|_| Error::<T>::BadMetadata)?;
+  
+      let bounded_film_list: BoundedVec<BoundedVec<u8, T::LinkStringLimit>, T::MaxMoviesInFest> =
+          TryInto::try_into(Vec::new()).map_err(|_| Error::<T>::BadMetadata)?;
+  
       let bounded_vote_map: BoundedBTreeMap<
-          BoundedVec<u8, T::LinkStringLimit>, 
+          BoundedVec<u8, T::LinkStringLimit>,
           BoundedVec<Vote<T::AccountId, BalanceOf<T>, BoundedVec<u8, T::NameStringLimit>>, T::MaxVotes>,
           T::MaxVotes,
       > = BoundedBTreeMap::new();
-      
-      
+  
       let zero_lockup = BalanceOf::<T>::from(0u32);
-      
+  
       let mut festival = Festival {
           id: festival_id.clone(),
           owner: who,
-          name: name,
-          description: description,
+          owner_id: owner_id_bounded, // Inicializando o novo campo
+          name,
+          description,
           internal_movies: bounded_film_list.clone(),
           external_movies: bounded_film_list.clone(),
           winners: bounded_film_list,
-          status: status,
+          status,
           max_entry: min_ticket_price,
           total_lockup: zero_lockup,
           vote_map: bounded_vote_map,
@@ -717,19 +733,19 @@ pub mod pallet {
           block_start_end: (BlockNumberFor::<T>::from(0u32), BlockNumberFor::<T>::from(0u32)),
           vote_power_decrease_block: BlockNumberFor::<T>::from(0u32),
       };
-
+  
       for movie_id in internal_movie_ids {
           festival.internal_movies.try_push(movie_id);
       }
-
+  
       for movie_id in external_movie_ids {
           festival.external_movies.try_push(movie_id);
       }
-
+  
       Festivals::<T>::insert(festival_id, festival);
-      
+  
       Ok(festival_id)
-    }
+  }
 
     pub fn do_bind_owners_to_festival(
         who : T::AccountId,
